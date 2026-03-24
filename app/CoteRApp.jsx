@@ -302,7 +302,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
     if(![1,2,3,4,5].includes(diffNum)){setError("Difficulté invalide.");return}
     if(!["keep","drop"].includes(verdict)){setError("Verdict invalide.");return}
     if(!CEGEPS.includes(cegep)){setError("Cégep invalide.");return}
-    if(cleanDept&&!DEPTS.includes(cleanDept)){setError("Département invalide.");return}
+    const validDept=DEPTS.includes(cleanDept)?cleanDept:"Autre";
     setError("");setLoading(true);
     const formatted=formatName(cleanName);
     try{
@@ -314,7 +314,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
       let profId;
       const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===cegep);
       if(existing){profId=existing.id}else{
-        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:cleanDept||"Autre",courses:[cleanCourse]}).select().single();
+        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:validDept,courses:[cleanCourse]}).select().single();
         if(e)throw e;profId=data.id;
       }
 
