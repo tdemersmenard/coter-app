@@ -13,7 +13,7 @@ export async function POST(request) {
         price: process.env.STRIPE_PRICE_ID,
         quantity: 1,
       }],
-      mode: 'payment',
+      mode: 'subscription',
       success_url: `${request.headers.get('origin')}/?pro=success`,
       cancel_url: `${request.headers.get('origin')}/?pro=canceled`,
     })
