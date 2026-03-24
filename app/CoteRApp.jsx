@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./supabase";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 
@@ -311,7 +311,7 @@ function StripePage({onClose,user,isPro,openLogin}){
 }
 
 // ============ REVIEW CARD ============
-function ReviewCard({r}){const c=rc(r.rating);return(
+function ReviewCard({r,likes,userLiked,onLike}){const c=rc(r.rating);return(
   <div style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"12px"}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,flexWrap:"wrap",gap:6}}>
       <div style={{display:"flex",alignItems:"center",gap:7}}>
@@ -320,12 +320,17 @@ function ReviewCard({r}){const c=rc(r.rating);return(
       </div>
       {r.grade&&<span style={{fontSize:11,padding:"2px 7px",borderRadius:"var(--border-radius-md)",background:"var(--color-background-secondary)",color:"var(--color-text-secondary)"}}>Note: {r.grade}</span>}
     </div>
-    <p style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.55,margin:0}}>{r.review_text}</p>
+    <p style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.55,margin:"0 0 8px"}}>{r.review_text}</p>
+    <div style={{display:"flex",justifyContent:"flex-end"}}>
+      <button onClick={()=>onLike&&onLike(r.id)} style={{background:"none",border:"0.5px solid "+(userLiked?"#1D9E75":"var(--color-border-tertiary)"),borderRadius:"var(--border-radius-md)",padding:"3px 10px",fontSize:11,cursor:"pointer",color:userLiked?"#1D9E75":"var(--color-text-tertiary)",display:"flex",alignItems:"center",gap:4,transition:"color 0.15s,border-color 0.15s"}}>
+        <span style={{fontSize:12}}>{userLiked?"♥":"♡"}</span>{likes||0}
+      </button>
+    </div>
   </div>
 )}
 
 // ============ PROF DETAIL ============
-function ProfDetail({prof,reviews,onBack,onEvaluate}){
+function ProfDetail({prof,reviews,onBack,onEvaluate,likesByReview,userLikes,onLike}){
   const rating=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length*10)/10:0;
   const diff=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.difficulty,0)/reviews.length*10)/10:0;
   const keepPct=reviews.length?Math.round(100*reviews.filter(r=>r.verdict==="keep").length/reviews.length):0;
@@ -352,7 +357,7 @@ function ProfDetail({prof,reviews,onBack,onEvaluate}){
         </div>
         <h2 style={{fontSize:15,fontWeight:500,margin:"0 0 12px",color:"var(--color-text-primary)"}}>Avis ({reviews.length})</h2>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {reviews.map((r,i)=><ReviewCard key={i} r={r}/>)}
+          {reviews.map((r,i)=><ReviewCard key={i} r={r} likes={likesByReview?likesByReview[r.id]||0:0} userLiked={userLikes?userLikes.has(r.id):false} onLike={onLike}/>)}
         </div>
       </>}
       {reviews.length===0&&<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:14,color:"var(--color-text-tertiary)",margin:0}}>Aucun avis encore pour ce prof.</p></div>}
@@ -361,9 +366,9 @@ function ProfDetail({prof,reviews,onBack,onEvaluate}){
 }
 
 // ============ PROFS PAGE (reads from Supabase) ============
-function ProfsPage({profs,reviewsByProf,onEvaluate}){
+function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLike}){
   const[search,setSearch]=useState("");const[cegep,setCegep]=useState("Cégep de Granby");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
-  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
+  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} onBack={()=>setSel(null)} onEvaluate={onEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={onLike}/>}
   const q=norm(search.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
   const profsWithReviews=profsWithStats.filter(p=>p.totalReviews>0);
@@ -533,7 +538,7 @@ function CalcPage(){
 export default function App(){
   const[page,setPage]=useState(()=>{try{const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
   const[user,setUser]=useState(null);
-  const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
+  const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});const[allLikes,setAllLikes]=useState([]);
   const[loading,setLoading]=useState(true);
   const[submitPrefill,setSubmitPrefill]=useState(null);
   const[showWelcome,setShowWelcome]=useState(false);
@@ -566,20 +571,35 @@ export default function App(){
 
   const loadData=async()=>{
     setLoading(true);
-    const{data:profsData}=await supabase.from('profs').select('*').order('name');
-    const{data:reviewsData}=await supabase.from('reviews').select('*').order('created_at',{ascending:false});
+    const[{data:profsData},{data:reviewsData},{data:likesData}]=await Promise.all([
+      supabase.from('profs').select('*').order('name'),
+      supabase.from('reviews').select('*').order('created_at',{ascending:false}),
+      supabase.from('review_likes').select('review_id,user_id'),
+    ]);
     if(profsData)setProfs(profsData);
-    if(reviewsData){
-      const grouped={};
-      reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});
-      setReviewsByProf(grouped);
-    }
+    if(reviewsData){const grouped={};reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});setReviewsByProf(grouped);}
+    if(likesData)setAllLikes(likesData);
     setLoading(false);
   };
   useEffect(()=>{loadData()},[]);
 
+  const likesByReview=useMemo(()=>{const m={};allLikes.forEach(l=>{m[l.review_id]=(m[l.review_id]||0)+1});return m},[allLikes]);
+  const userLikes=useMemo(()=>new Set(user?allLikes.filter(l=>l.user_id===user.id).map(l=>l.review_id):[]),[allLikes,user]);
+
   const go=t=>{setPrevPage(page);setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
   const goToLogin=()=>go("login");const goToAccount=()=>go("account");
+
+  const toggleLike=async(reviewId)=>{
+    if(!user){goToLogin();return;}
+    const alreadyLiked=allLikes.some(l=>l.review_id===reviewId&&l.user_id===user.id);
+    if(alreadyLiked){
+      setAllLikes(prev=>prev.filter(l=>!(l.review_id===reviewId&&l.user_id===user.id)));
+      await supabase.from('review_likes').delete().eq('review_id',reviewId).eq('user_id',user.id);
+    }else{
+      setAllLikes(prev=>[...prev,{review_id:reviewId,user_id:user.id}]);
+      await supabase.from('review_likes').insert({review_id:reviewId,user_id:user.id});
+    }
+  };
   const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
   const navTo=t=>{setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);navTo("profs")};
@@ -590,7 +610,7 @@ export default function App(){
   return wrap(<>
     {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
     {loading&&page==="profs"&&<div style={{textAlign:"center",padding:"60px 0"}}><p style={{color:"var(--color-text-tertiary)"}}>Chargement...</p></div>}
-    {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate}/>}
+    {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
     {page==="calc"&&<CalcPage/>}
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
     {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/>}
