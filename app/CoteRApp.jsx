@@ -364,12 +364,16 @@ export default function App(){
   },[]);
 
   // Check for Stripe success redirect
+ // Check for Stripe success redirect
   useEffect(()=>{
     if(typeof window!=="undefined"){
       const params=new URLSearchParams(window.location.search);
-      if(params.get("pro")==="success"){setIsPro(true);window.history.replaceState({},"","/");}
+      if(params.get("pro")==="success"&&user){
+        supabase.from('pro_users').upsert({user_id:user.id}).then(()=>{setIsPro(true)});
+        window.history.replaceState({},"","/");
+      }
     }
-  },[]);
+  },[user]);
 
   // Load profs and reviews from Supabase
   const loadData=async()=>{
@@ -385,8 +389,18 @@ export default function App(){
     setLoading(false);
   };
   useEffect(()=>{loadData()},[]);
+  
+  useEffect(()=>{
+    if(user){
+      supabase.from('pro_users').select('user_id').eq('user_id',user.id).single().then(({data})=>{
+        if(data)setIsPro(true);
+      });
+    }
+  },[user]);
 
   const go=t=>{setPrevPage(page);setPage(t)};
+
+
   const goToLogin=()=>go("login");const goToPaywall=()=>go("paywall");const goToAccount=()=>go("account");
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);setPage("profs")};
   const wrap=ch=><div style={{maxWidth:680,margin:"0 auto",padding:"0 16px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
