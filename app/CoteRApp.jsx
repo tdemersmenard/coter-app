@@ -83,37 +83,32 @@ function Landing({onStart}){
 
 // ============ LOGIN PAGE (real Google auth) ============
 function LoginPage({onClose}){
-  const[email,setEmail]=useState("");const[sent,setSent]=useState(false);const[loading,setLoading]=useState(false);
-  const googleLogin=async()=>{
-    await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/auth/callback'}});
+  const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[isSignUp,setIsSignUp]=useState(false);
+  const handleSubmit=async()=>{
+    if(!email||!password){setError("Entre ton email et mot de passe.");return}
+    if(password.length<6){setError("Mot de passe: 6 caracteres minimum.");return}
+    setLoading(true);setError("");
+    if(isSignUp){
+      const{error:e}=await supabase.auth.signUp({email,password});
+      if(e){setError(e.message);setLoading(false);return}
+    }else{
+      const{error:e}=await supabase.auth.signInWithPassword({email,password});
+      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);return}
+    }
+    setLoading(false);
   };
-  const emailLogin=async()=>{
-    if(!email)return;setLoading(true);
-    await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+'/auth/callback'}});
-    setSent(true);setLoading(false);
-  };
-  if(sent)return(
-    <div style={{maxWidth:380,margin:"0 auto",padding:"40px 0"}}><div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"28px 24px",border:"0.5px solid var(--color-border-tertiary)",textAlign:"center"}}>
-      <div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"#1D9E75"}}>&#9993;</span></div>
-      <h2 style={{fontSize:18,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Check tes emails</h2>
-      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 4px"}}>On a envoyé un lien magique à :</p>
-      <p style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 16px"}}>{email}</p>
-      <p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:0}}>Clique le lien dans l'email pour te connecter. Check tes spams si tu ne le vois pas.</p>
-      <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:16,padding:8}}>&larr; Retour</button>
-    </div></div>
-  );
   return(
     <div style={{maxWidth:380,margin:"0 auto",padding:"40px 0"}}>
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"28px 24px",border:"0.5px solid var(--color-border-tertiary)"}}>
-        <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>Connexion</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>Connecte-toi pour évaluer tes profs.</p></div>
-        <button onClick={googleLogin} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:10,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:14,cursor:"pointer",color:"var(--color-text-primary)",fontWeight:500,marginBottom:16}}>
-          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          Continuer avec Google
-        </button>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}><div style={{flex:1,height:"0.5px",background:"var(--color-border-tertiary)"}}/><span style={{fontSize:12,color:"var(--color-text-tertiary)"}}>ou</span><div style={{flex:1,height:"0.5px",background:"var(--color-border-tertiary)"}}/></div>
-        <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp,marginBottom:10}}/>
-        <button onClick={emailLogin} disabled={loading} style={{width:"100%",background:"var(--color-background-secondary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"11px",fontSize:14,cursor:"pointer",color:"var(--color-text-primary)",fontWeight:500,opacity:loading?0.7:1}}>{loading?"Envoi...":"Recevoir un lien magique"}</button>
-        <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"14px 0 0",lineHeight:1.5}}>Tes évaluations restent 100% anonymes.</p>
+        <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>{isSignUp?"Creer un compte":"Connexion"}</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{isSignUp?"Gratuit, ca prend 10 secondes.":"Connecte-toi pour evaluer tes profs."}</p></div>
+        {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"}}/>
+          <input type="password" placeholder="Mot de passe (6+ caracteres)" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"}}/>
+          <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer"}}>{loading?"...":(isSignUp?"Creer mon compte":"Se connecter")}</button>
+        </div>
+        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("")}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
+        <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"12px 0 0"}}>Tes evaluations restent 100% anonymes.</p>
         <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:12,padding:8}}>&larr; Retour</button>
       </div>
     </div>
