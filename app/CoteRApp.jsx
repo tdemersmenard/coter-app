@@ -1,6 +1,40 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
+
+const ALLOWED_EMAIL_DOMAINS = new Set([
+  // Google
+  "gmail.com","googlemail.com",
+  // Microsoft
+  "outlook.com","hotmail.com","hotmail.fr","hotmail.ca","hotmail.co.uk",
+  "live.com","live.fr","live.ca","live.co.uk","msn.com","windowslive.com",
+  // Yahoo
+  "yahoo.com","yahoo.fr","yahoo.ca","yahoo.co.uk","ymail.com",
+  // Apple
+  "icloud.com","me.com","mac.com",
+  // Proton
+  "proton.me","protonmail.com","pm.me",
+  // Autres
+  "aol.com","zoho.com","gmx.com","gmx.fr","gmx.net","mail.com",
+  "tutanota.com","tuta.com","fastmail.com","hey.com","yandex.com",
+  // FAI canadiens
+  "bell.net","bellnet.ca","sympatico.ca","videotron.ca","videotron.net",
+  "rogers.com","cogeco.ca","cogeco.net","shaw.ca","telus.net",
+  "eastlink.ca","northwestel.net","sasktel.net","mts.net",
+]);
+
+function isEmailAllowed(email){
+  const domain=(email.split("@")[1]||"").toLowerCase();
+  if(!domain)return false;
+  if(ALLOWED_EMAIL_DOMAINS.has(domain))return true;
+  // Domaines institutionnels québécois (.qc.ca) et canadiens (.gc.ca)
+  if(domain.endsWith(".qc.ca"))return true;
+  if(domain.endsWith(".gc.ca"))return true;
+  // Domaines universitaires
+  if(domain.endsWith(".edu"))return true;
+  return false;
+}
 
 const CEGEPS = ["Cégep de l'Abitibi-Témiscamingue","Cégep d'Ahuntsic","Collège d'Alma","Cégep André-Laurendeau","Cégep de Baie-Comeau","Cégep Beauce-Appalaches","Cégep de Bois-de-Boulogne","Champlain Regional College","Cégep de Chicoutimi","Collège Dawson","Cégep de Drummondville","Cégep Édouard-Montpetit","Cégep Garneau","Cégep de la Gaspésie et des Îles","Cégep Gérald-Godin","Cégep de Granby","Cégep Heritage","Cégep John Abbott","Cégep de Jonquière","Cégep de La Pocatière","Cégep de Lanaudière à Joliette","Cégep de Lanaudière à L'Assomption","Cégep de Lanaudière à Terrebonne","Cégep de Lévis","Cégep Limoilou","Cégep Lionel-Groulx","Cégep de Maisonneuve","Cégep Marie-Victorin","Cégep de Matane","Cégep Montmorency","Cégep de l'Outaouais","Cégep de Rimouski","Cégep de Rivière-du-Loup","Cégep de Rosemont","Cégep de Sainte-Foy","Cégep de Saint-Hyacinthe","Cégep de Saint-Jérôme","Cégep Saint-Jean-sur-Richelieu","Cégep de Saint-Laurent","Cégep de Sept-Îles","Cégep de Shawinigan","Cégep de Sherbrooke","Cégep de Sorel-Tracy","Cégep de St-Félicien","Cégep de Thetford","Cégep de Trois-Rivières","Cégep de Valleyfield","Cégep Vanier","Cégep de Victoriaville","Cégep du Vieux Montréal"].sort((a,b)=>a.localeCompare(b,"fr"));
 const DEPTS = ["Sciences humaines","Sciences de la nature","Philosophie","Français","Mathématiques","Éducation physique","Anglais","Administration","Arts","Informatique","Soins infirmiers","Autre"];
@@ -85,16 +119,22 @@ function Landing({onStart}){
 // ============ LOGIN PAGE ============
 function LoginPage({onClose}){
   const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[isSignUp,setIsSignUp]=useState(false);
+  const[captchaToken,setCaptchaToken]=useState(null);
+  const captchaRef=useRef(null);
+  const sitekey=process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY;
+
   const handleSubmit=async()=>{
     if(!email||!password){setError("Entre ton email et mot de passe.");return}
     if(password.length<6){setError("Mot de passe: 6 caracteres minimum.");return}
+    if(isSignUp&&!isEmailAllowed(email)){setError("Ce domaine d'email n'est pas accepté. Utilise Gmail, Outlook, Yahoo, ou ton email scolaire (.qc.ca).");return}
+    if(!captchaToken){setError("Complète le captcha avant de continuer.");return}
     setLoading(true);setError("");
     if(isSignUp){
-      const{error:e}=await supabase.auth.signUp({email,password});
-      if(e){setError(e.message);setLoading(false);return}
+      const{error:e}=await supabase.auth.signUp({email,password,options:{captchaToken}});
+      if(e){setError(e.message);setLoading(false);captchaRef.current?.resetCaptcha();setCaptchaToken(null);return}
     }else{
-      const{error:e}=await supabase.auth.signInWithPassword({email,password});
-      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);return}
+      const{error:e}=await supabase.auth.signInWithPassword({email,password,options:{captchaToken}});
+      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);captchaRef.current?.resetCaptcha();setCaptchaToken(null);return}
     }
     setLoading(false);
   };
@@ -106,9 +146,10 @@ function LoginPage({onClose}){
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
           <input type="password" placeholder="Mot de passe (6+ caracteres)" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{...inp}}/>
+          {sitekey&&<div style={{display:"flex",justifyContent:"center",margin:"4px 0"}}><HCaptcha ref={captchaRef} sitekey={sitekey} onVerify={token=>setCaptchaToken(token)} onExpire={()=>setCaptchaToken(null)} theme="auto"/></div>}
           <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer"}}>{loading?"...":(isSignUp?"Creer mon compte":"Se connecter")}</button>
         </div>
-        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("")}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
+        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("");setCaptchaToken(null);captchaRef.current?.resetCaptcha()}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
         <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"12px 0 0"}}>Tes evaluations restent 100% anonymes.</p>
         <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:12,padding:8}}>&larr; Retour</button>
       </div>
