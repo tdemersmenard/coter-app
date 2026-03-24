@@ -400,6 +400,10 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
           </div>}
         </div>
       ))}</div>}
+      {q.length>=1&&<div style={{textAlign:"center",marginTop:18,padding:"14px 16px",borderTop:"0.5px solid var(--color-border-tertiary)"}}>
+        <p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 6px"}}>Ton prof n'apparaît pas? C'est qu'il n'a pas encore été évalué.</p>
+        <button onClick={()=>onEvaluate({name:search.trim(),cegep:"",dept:""})} style={{background:"none",border:"0.5px solid #1D9E75",borderRadius:"var(--border-radius-md)",padding:"5px 14px",fontSize:12,color:"#1D9E75",cursor:"pointer",fontWeight:500}}>Être le premier à évaluer "{search.trim()}"</button>
+      </div>}
     </div>
   );
 }
