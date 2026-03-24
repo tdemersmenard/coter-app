@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
 
 const CEGEPS = ["Cégep de l'Abitibi-Témiscamingue","Cégep d'Ahuntsic","Collège d'Alma","Cégep André-Laurendeau","Cégep de Baie-Comeau","Cégep Beauce-Appalaches","Cégep de Bois-de-Boulogne","Champlain Regional College","Cégep de Chicoutimi","Collège Dawson","Cégep de Drummondville","Cégep Édouard-Montpetit","Cégep Garneau","Cégep de la Gaspésie et des Îles","Cégep Gérald-Godin","Cégep de Granby","Cégep Heritage","Cégep John Abbott","Cégep de Jonquière","Cégep de La Pocatière","Cégep de Lanaudière à Joliette","Cégep de Lanaudière à L'Assomption","Cégep de Lanaudière à Terrebonne","Cégep de Lévis","Cégep Limoilou","Cégep Lionel-Groulx","Cégep de Maisonneuve","Cégep Marie-Victorin","Cégep de Matane","Cégep Montmorency","Cégep de l'Outaouais","Cégep de Rimouski","Cégep de Rivière-du-Loup","Cégep de Rosemont","Cégep de Sainte-Foy","Cégep de Saint-Hyacinthe","Cégep de Saint-Jérôme","Cégep Saint-Jean-sur-Richelieu","Cégep de Saint-Laurent","Cégep de Sept-Îles","Cégep de Shawinigan","Cégep de Sherbrooke","Cégep de Sorel-Tracy","Cégep de St-Félicien","Cégep de Thetford","Cégep de Trois-Rivières","Cégep de Valleyfield","Cégep Vanier","Cégep de Victoriaville","Cégep du Vieux Montréal"].sort((a,b)=>a.localeCompare(b,"fr"));
@@ -166,14 +166,17 @@ function ReviewCard({r}){const c=rc(r.rating);return(
 )}
 
 // ============ PROF DETAIL ============
-function ProfDetail({prof,reviews,isPro,goToPaywall,onBack}){
+function ProfDetail({prof,reviews,isPro,goToPaywall,onBack,onEvaluate}){
   const rating=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length*10)/10:0;
   const diff=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.difficulty,0)/reviews.length*10)/10:0;
   const keepPct=reviews.length?Math.round(100*reviews.filter(r=>r.verdict==="keep").length/reviews.length):0;
   const verdict=keepPct>=50?"keep":"drop";
   return(
     <div style={{maxWidth:580,margin:"0 auto"}}>
-      <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"0 0 14px"}}>&larr; Retour aux profs</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:0}}>&larr; Retour aux profs</button>
+        <button onClick={()=>onEvaluate(prof)} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Évaluer</button>
+      </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:18,gap:12}}>
         <div style={{minWidth:0}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}><h1 style={{fontSize:"min(21px, 5vw)",fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{prof.name}</h1>{reviews.length>0&&<VBadge v={verdict} small/>}</div>
@@ -213,9 +216,9 @@ function ProfDetail({prof,reviews,isPro,goToPaywall,onBack}){
 }
 
 // ============ PROFS PAGE (reads from Supabase) ============
-function ProfsPage({isPro,goToPaywall,profs,reviewsByProf}){
+function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
   const[search,setSearch]=useState("");const[cegep,setCegep]=useState("Cégep de Granby");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
-  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} isPro={isPro} goToPaywall={goToPaywall} onBack={()=>setSel(null)}/>}
+  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} isPro={isPro} goToPaywall={goToPaywall} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
   const q=search.trim().toLowerCase();
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
   let list=q.length>=2?profsWithStats.filter(p=>p.name.toLowerCase().includes(q)||p.courses?.some(c=>c.toLowerCase().includes(q))||p.dept?.toLowerCase().includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
@@ -235,7 +238,10 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf}){
         <div key={p.id} onClick={()=>setSel(p)} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--color-border-secondary)"} onMouseLeave={e=>e.currentTarget.style.borderColor="var(--color-border-tertiary)"}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
             <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{q.length>=2?` — ${p.cegep}`:""}</p></div>
-            {p.totalReviews>0&&<div style={{textAlign:"right",flexShrink:0}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
+            <div style={{display:"flex",alignItems:"start",gap:8,flexShrink:0}}>
+              <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"var(--color-background-success)",color:"#1D9E75",border:"none",borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
+              {p.totalReviews>0&&<div style={{textAlign:"right"}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
+            </div>
           </div>
           {p.totalReviews>0&&<div style={{display:"flex",gap:14}}>
             <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Qualité</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.rating}/5</span></div><RBar value={p.rating}/></div>
@@ -248,8 +254,8 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf}){
 }
 
 // ============ SUBMIT PAGE (writes to Supabase) ============
-function SubmitPage({user,profs,goToLogin,onSubmitted}){
-  const[cegep,setCegep]=useState("Cégep de Granby");const[profName,setProfName]=useState("");const[dept,setDept]=useState("");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
+function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
+  const[cegep,setCegep]=useState(prefill?.cegep||"Cégep de Granby");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
 
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
   if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
@@ -348,6 +354,8 @@ export default function App(){
   const[isPro,setIsPro]=useState(false);const[user,setUser]=useState(null);
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
   const[loading,setLoading]=useState(true);
+  const[submitPrefill,setSubmitPrefill]=useState(null);
+  const afterLoginPage=useRef("profs");
 
   // Load auth state
   useEffect(()=>{
@@ -357,7 +365,7 @@ export default function App(){
     const{data:{subscription}}=supabase.auth.onAuthStateChange((ev,session)=>{
       if(session){
         setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
-        setPage(p=>p==="login"?"profs":p);
+        setPage(p=>{if(p==="login"){const dest=afterLoginPage.current;afterLoginPage.current="profs";return dest;}return p;});
       }else setUser(null);
     });
     return()=>subscription.unsubscribe();
@@ -400,6 +408,7 @@ export default function App(){
 
   const go=t=>{setPrevPage(page);setPage(t)};
   const goToLogin=()=>go("login");const goToPaywall=()=>go("paywall");const goToAccount=()=>go("account");
+  const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);setPage("profs")};
   const wrap=ch=><div style={{maxWidth:680,margin:"0 auto",padding:"0 16px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
@@ -408,9 +417,9 @@ export default function App(){
   return wrap(<>
     {!["login","account"].includes(page)&&<Nav page={page} setPage={setPage} isPro={isPro} goToPaywall={goToPaywall} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
     {loading&&page==="profs"&&<div style={{textAlign:"center",padding:"60px 0"}}><p style={{color:"var(--color-text-tertiary)"}}>Chargement...</p></div>}
-    {!loading&&page==="profs"&&<ProfsPage isPro={isPro} goToPaywall={goToPaywall} profs={profs} reviewsByProf={reviewsByProf}/>}
+    {!loading&&page==="profs"&&<ProfsPage isPro={isPro} goToPaywall={goToPaywall} profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate}/>}
     {page==="calc"&&<CalcPage/>}
-    {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData}/>}
+    {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
     {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)}/>}
     {page==="paywall"&&<StripePage onClose={()=>setPage(prevPage)} user={user} isPro={isPro} openLogin={()=>{setPrevPage("paywall");setPage("login")}}/>}
     {page==="account"&&<AccountPage user={user} isPro={isPro} goToPaywall={goToPaywall} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/>}
