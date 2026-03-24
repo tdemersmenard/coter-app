@@ -177,8 +177,9 @@ function LoginPage({onClose,onVerified}){
     setLoading(true);setError("");
     if(mode==="signup"){
       const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
-      const{error:e}=await supabase.auth.signUp({email,password,...opts});
+      const{data:signUpData,error:e}=await supabase.auth.signUp({email,password,...opts});
       if(e){setError(e.message);setLoading(false);resetCaptcha();return}
+      if(signUpData?.user?.identities?.length===0){setError("Un compte existe déjà avec cet email. Connecte-toi.");setLoading(false);resetCaptcha();return}
       setMode("verify");setResendCooldown(60);
     }else{
       const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
