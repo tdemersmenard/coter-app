@@ -366,7 +366,8 @@ function ProfsPage({profs,reviewsByProf,onEvaluate}){
   if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
   const q=norm(search.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
-  let list=q.length>=1?profsWithStats.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
+  const profsWithReviews=profsWithStats.filter(p=>p.totalReviews>0);
+  let list=q.length>=1?profsWithReviews.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithReviews.filter(p=>p.cegep===cegep);
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
   return(
     <div style={{maxWidth:720,margin:"0 auto"}}>
