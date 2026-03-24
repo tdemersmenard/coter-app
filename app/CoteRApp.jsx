@@ -6,9 +6,28 @@ import HCaptcha from "@hcaptcha/react-hcaptcha";
 const ALLOWED_EMAIL_DOMAINS = new Set([
   // Google
   "gmail.com","googlemail.com",
-  // Microsoft
-  "outlook.com","hotmail.com","hotmail.fr","hotmail.ca","hotmail.co.uk",
-  "live.com","live.fr","live.ca","live.co.uk","msn.com","windowslive.com",
+  // Microsoft — Outlook
+  "outlook.com","outlook.fr","outlook.ca","outlook.co.uk","outlook.de",
+  "outlook.es","outlook.it","outlook.jp","outlook.com.br","outlook.com.ar",
+  "outlook.com.au","outlook.at","outlook.be","outlook.cl","outlook.cz",
+  "outlook.dk","outlook.fi","outlook.hu","outlook.ie","outlook.in",
+  "outlook.kr","outlook.lv","outlook.my","outlook.nl","outlook.ph",
+  "outlook.pt","outlook.sa","outlook.sg","outlook.sk","outlook.th","outlook.tr",
+  // Microsoft — Hotmail
+  "hotmail.com","hotmail.fr","hotmail.ca","hotmail.co.uk","hotmail.de",
+  "hotmail.es","hotmail.it","hotmail.com.br","hotmail.com.ar","hotmail.co.jp",
+  "hotmail.nl","hotmail.be","hotmail.ch","hotmail.dk","hotmail.fi",
+  "hotmail.gr","hotmail.hu","hotmail.ie","hotmail.in","hotmail.lv",
+  "hotmail.lt","hotmail.no","hotmail.pt","hotmail.ro","hotmail.rs",
+  "hotmail.ru","hotmail.se","hotmail.sg","hotmail.sk","hotmail.hr",
+  // Microsoft — Live
+  "live.com","live.fr","live.ca","live.co.uk","live.de","live.es",
+  "live.it","live.com.br","live.com.ar","live.nl","live.be","live.ch",
+  "live.dk","live.fi","live.no","live.se","live.at","live.com.au",
+  "live.com.mx","live.com.pt","live.com.sg","live.co.jp","live.ru",
+  "live.ie","live.in","live.jp","live.cl","live.ph",
+  // Microsoft — autres
+  "msn.com","windowslive.com","passport.com",
   // Yahoo
   "yahoo.com","yahoo.fr","yahoo.ca","yahoo.co.uk","ymail.com",
   // Apple
