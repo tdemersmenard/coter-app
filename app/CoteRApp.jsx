@@ -222,7 +222,7 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
   if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} isPro={isPro} goToPaywall={goToPaywall} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
   const q=norm(search.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
-  let list=q.length>=2?profsWithStats.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
+  let list=q.length>=1?profsWithStats.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
   return(
     <div style={{maxWidth:720,margin:"0 auto"}}>
@@ -262,10 +262,10 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
 
   const pq=norm(profName.trim());
-  const profSuggestions=pq.length>=2?profs.filter(p=>p.cegep===cegep&&norm(p.name).includes(pq)).slice(0,5):[];
+  const profSuggestions=pq.length>=1?profs.filter(p=>p.cegep===cegep&&norm(p.name).includes(pq)).slice(0,5):[];
   const allCourses=[...new Set(profs.filter(p=>p.cegep===cegep).flatMap(p=>p.courses||[]))].sort();
   const cq=course.trim().toLowerCase();
-  const courseSuggestions=cq.length>=2?allCourses.filter(c=>c.toLowerCase().includes(cq)).slice(0,5):[];
+  const courseSuggestions=cq.length>=1?allCourses.filter(c=>c.toLowerCase().includes(cq)).slice(0,5):[];
   const selectProf=p=>{setProfName(p.name);setDept(p.dept||"");setCourse("");setCustomCourse(false);setShowProfSug(false)};
   const existingMatch=pq.length>=3?profs.find(p=>norm(p.name)===norm(formatName(profName))&&p.cegep===cegep):null;
   const profCourses=existingMatch?.courses||[];
