@@ -1,0 +1,401 @@
+"use client";
+import { useState, useEffect } from "react";
+import { supabase } from "./supabase";
+
+const CEGEPS = ["Cégep de l'Abitibi-Témiscamingue","Cégep d'Ahuntsic","Collège d'Alma","Cégep André-Laurendeau","Cégep de Baie-Comeau","Cégep Beauce-Appalaches","Cégep de Bois-de-Boulogne","Champlain Regional College","Cégep de Chicoutimi","Collège Dawson","Cégep de Drummondville","Cégep Édouard-Montpetit","Cégep Garneau","Cégep de la Gaspésie et des Îles","Cégep Gérald-Godin","Cégep de Granby","Cégep Heritage","Cégep John Abbott","Cégep de Jonquière","Cégep de La Pocatière","Cégep de Lanaudière à Joliette","Cégep de Lanaudière à L'Assomption","Cégep de Lanaudière à Terrebonne","Cégep de Lévis","Cégep Limoilou","Cégep Lionel-Groulx","Cégep de Maisonneuve","Cégep Marie-Victorin","Cégep de Matane","Cégep Montmorency","Cégep de l'Outaouais","Cégep de Rimouski","Cégep de Rivière-du-Loup","Cégep de Rosemont","Cégep de Sainte-Foy","Cégep de Saint-Hyacinthe","Cégep de Saint-Jérôme","Cégep Saint-Jean-sur-Richelieu","Cégep de Saint-Laurent","Cégep de Sept-Îles","Cégep de Shawinigan","Cégep de Sherbrooke","Cégep de Sorel-Tracy","Cégep de St-Félicien","Cégep de Thetford","Cégep de Trois-Rivières","Cégep de Valleyfield","Cégep Vanier","Cégep de Victoriaville","Cégep du Vieux Montréal"].sort((a,b)=>a.localeCompare(b,"fr"));
+const DEPTS = ["Sciences humaines","Sciences de la nature","Philosophie","Français","Mathématiques","Éducation physique","Anglais","Administration","Arts","Informatique","Soins infirmiers","Autre"];
+
+function formatName(r){return r.trim().split(/\s+/).map(w=>{if(w.startsWith("d'")||w.startsWith("D'"))return w[0].toLowerCase()+"'"+w[2].toUpperCase()+w.slice(3).toLowerCase();if(["de","du","des","le","la","les"].includes(w.toLowerCase()))return w.toLowerCase();return w[0].toUpperCase()+w.slice(1).toLowerCase()}).join(" ").replace(/^(.)/,(_,c)=>c.toUpperCase())}
+
+function calculateCoteR(courses){const v=courses.filter(c=>c.grade&&c.groupAvg&&c.groupStd);if(!v.length)return null;let t=0,n=0;for(const c of v){const g=parseFloat(c.grade),a=parseFloat(c.groupAvg),s=parseFloat(c.groupStd);if(isNaN(g)||isNaN(a)||isNaN(s)||s===0)continue;t+=((g-a)/s)*(1+(a-72)/100);n++}if(!n)return null;return Math.round((25+(t/n)*5)*10)/10}
+
+// ============ COMPONENTS ============
+function Logo({size="lg"}){const s=size==="lg"?{t:28,d:10}:{t:17,d:7};return<span style={{display:"inline-flex",alignItems:"center",gap:4,cursor:"pointer"}}><span style={{fontFamily:"'Space Mono',monospace",fontSize:s.t,fontWeight:700,letterSpacing:"-0.03em",color:"var(--color-text-primary)"}}>coteR</span><span style={{width:s.d,height:s.d,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/></span>}
+function VBadge({v,small}){const k=v==="keep";return<span style={{display:"inline-block",fontSize:small?10:12,fontWeight:500,padding:small?"2px 7px":"4px 11px",borderRadius:"var(--border-radius-md)",background:k?"var(--color-background-success)":"var(--color-background-danger)",color:k?"#1D9E75":"#E24B4A"}}>{k?"KEEP":"DROP"}</span>}
+function RBar({value}){const c=value>=4?"#1D9E75":value>=3?"#EF9F27":"#E24B4A";return<div style={{height:5,background:"var(--color-background-secondary)",borderRadius:3,flex:1}}><div style={{height:"100%",width:`${(value/5)*100}%`,background:c,borderRadius:3}}/></div>}
+const rc=v=>v>=4?"#1D9E75":v>=3?"#EF9F27":"#E24B4A";
+const inp={width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"};
+const lbl={fontSize:12,fontWeight:500,color:"var(--color-text-secondary)",display:"block",marginBottom:5};
+
+// ============ NAV ============
+function Nav({page,setPage,isPro,goToPaywall,user,goToLogin,goToAccount}){
+  return(
+    <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:8,flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
+        <span onClick={()=>setPage("profs")}><Logo size="sm"/></span>
+        <div style={{display:"flex",gap:2}}>
+          {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
+            <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"5px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?500:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        {!isPro?<button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"5px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>PRO</button>
+        :<span style={{display:"inline-flex",alignItems:"center",gap:4,background:"var(--color-background-success)",borderRadius:"var(--border-radius-md)",padding:"4px 8px"}}><span style={{width:5,height:5,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/><span style={{fontSize:11,color:"#1D9E75",fontWeight:500}}>PRO</span></span>}
+        {user?<button onClick={goToAccount} style={{width:32,height:32,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:500,color:"var(--color-text-info)",border:page==="account"?"2px solid var(--color-border-info)":"2px solid transparent",cursor:"pointer",padding:0,flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
+        :<button onClick={goToLogin} style={{background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"5px 12px",fontSize:12,cursor:"pointer",color:"var(--color-text-secondary)",whiteSpace:"nowrap"}}>Connexion</button>}
+      </div>
+    </nav>
+  );
+}
+
+// ============ ACCOUNT PAGE ============
+function AccountPage({user,isPro,goToPaywall,onLogout,onBack}){
+  return(
+    <div style={{maxWidth:420,margin:"0 auto",padding:"24px 0"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"0 0 16px"}}>&larr; Retour</button>
+      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",border:"0.5px solid var(--color-border-tertiary)",padding:"28px 24px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
+          <div style={{width:52,height:52,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"var(--color-text-info)",flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</div>
+          <div style={{minWidth:0}}><p style={{fontSize:18,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name||"Utilisateur"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</p></div>
+        </div>
+        <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"16px",marginBottom:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><p style={{fontSize:14,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)"}}>Abonnement</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0}}>{isPro?"CoteR PRO — actif":"Gratuit"}</p></div>
+            {isPro?<span style={{fontSize:11,padding:"3px 10px",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",fontWeight:500}}>Actif</span>
+            :<button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:12,fontWeight:500,cursor:"pointer"}}>Passer à PRO</button>}
+          </div>
+        </div>
+        <button onClick={onLogout} style={{width:"100%",background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"11px",fontSize:14,cursor:"pointer",color:"var(--color-text-danger)"}}>Se déconnecter</button>
+      </div>
+    </div>
+  );
+}
+
+// ============ LANDING ============
+function Landing({onStart}){
+  return(
+    <div style={{minHeight:"85vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"2rem 0.5rem"}}>
+      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--color-background-success)",borderRadius:20,padding:"4px 14px",marginBottom:18,fontSize:12,color:"#1D9E75"}}><span style={{width:6,height:6,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/>100% anonyme</div>
+      <Logo size="lg"/>
+      <p style={{fontSize:"min(36px, 8vw)",fontWeight:700,lineHeight:1.1,margin:"14px 0 8px",maxWidth:460,letterSpacing:"-0.03em",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>Drop ou keep?</p>
+      <p style={{fontSize:"min(17px, 4.5vw)",color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Rate tes profs. Check les ratings. Sauve ta session.</p>
+      <p style={{fontSize:14,color:"var(--color-text-tertiary)",maxWidth:370,lineHeight:1.55,margin:"0 0 28px",padding:"0 12px"}}>Ratings de profs, verdicts drop/keep, et calculateur de cote R — pour tous les cégeps du Québec.</p>
+      <button onClick={onStart} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px 34px",fontSize:15,fontWeight:500,cursor:"pointer"}}>Voir les profs &rarr;</button>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,maxWidth:480,width:"100%",marginTop:48,padding:"0 8px"}}>
+        {[{n:"48 cégeps",d:"Tous les cégeps du QC"},{n:"Drop/Keep",d:"Verdict clair par prof"},{n:"Cote R",d:"Formule avec écart-type"}].map((f,i)=>(
+          <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"14px 12px"}}><p style={{fontSize:14,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>{f.n}</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0,lineHeight:1.4}}>{f.d}</p></div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============ LOGIN PAGE (real Google auth) ============
+function LoginPage({onClose}){
+  const[email,setEmail]=useState("");const[sent,setSent]=useState(false);const[loading,setLoading]=useState(false);
+  const googleLogin=async()=>{
+    await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/auth/callback'}});
+  };
+  const emailLogin=async()=>{
+    if(!email)return;setLoading(true);
+    await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+'/auth/callback'}});
+    setSent(true);setLoading(false);
+  };
+  if(sent)return(
+    <div style={{maxWidth:380,margin:"0 auto",padding:"40px 0"}}><div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"28px 24px",border:"0.5px solid var(--color-border-tertiary)",textAlign:"center"}}>
+      <div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"#1D9E75"}}>&#9993;</span></div>
+      <h2 style={{fontSize:18,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Check tes emails</h2>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 4px"}}>On a envoyé un lien magique à :</p>
+      <p style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 16px"}}>{email}</p>
+      <p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:0}}>Clique le lien dans l'email pour te connecter. Check tes spams si tu ne le vois pas.</p>
+      <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:16,padding:8}}>&larr; Retour</button>
+    </div></div>
+  );
+  return(
+    <div style={{maxWidth:380,margin:"0 auto",padding:"40px 0"}}>
+      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"28px 24px",border:"0.5px solid var(--color-border-tertiary)"}}>
+        <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>Connexion</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>Connecte-toi pour évaluer tes profs.</p></div>
+        <button onClick={googleLogin} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:10,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:14,cursor:"pointer",color:"var(--color-text-primary)",fontWeight:500,marginBottom:16}}>
+          <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continuer avec Google
+        </button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}><div style={{flex:1,height:"0.5px",background:"var(--color-border-tertiary)"}}/><span style={{fontSize:12,color:"var(--color-text-tertiary)"}}>ou</span><div style={{flex:1,height:"0.5px",background:"var(--color-border-tertiary)"}}/></div>
+        <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp,marginBottom:10}}/>
+        <button onClick={emailLogin} disabled={loading} style={{width:"100%",background:"var(--color-background-secondary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"11px",fontSize:14,cursor:"pointer",color:"var(--color-text-primary)",fontWeight:500,opacity:loading?0.7:1}}>{loading?"Envoi...":"Recevoir un lien magique"}</button>
+        <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"14px 0 0",lineHeight:1.5}}>Tes évaluations restent 100% anonymes.</p>
+        <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:12,padding:8}}>&larr; Retour</button>
+      </div>
+    </div>
+  );
+}
+
+// ============ STRIPE PAGE (real checkout) ============
+function StripePage({onClose,user,isPro,openLogin}){
+  const[loading,setLoading]=useState(false);
+  if(!user)return(<div style={{maxWidth:400,margin:"0 auto",textAlign:"center",padding:"60px 0"}}><div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"32px",border:"0.5px solid var(--color-border-tertiary)"}}><p style={{fontSize:15,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 12px"}}>Connecte-toi d'abord</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour t'abonner.</p><button onClick={openLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"11px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter</button></div></div>);
+  if(isPro)return(<div style={{maxWidth:400,margin:"0 auto",textAlign:"center",padding:"60px 0"}}><div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"32px",border:"0.5px solid var(--color-border-tertiary)"}}><div style={{width:48,height:48,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:22,color:"#1D9E75"}}>&#10003;</span></div><h2 style={{fontSize:20,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>T'es déjà PRO!</h2><p style={{fontSize:14,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu as accès à tout.</p><button onClick={onClose} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"11px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Retour &rarr;</button></div></div>);
+  const handleCheckout=async()=>{
+    setLoading(true);
+    try{
+      const res=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:user.email})});
+      const data=await res.json();
+      if(data.url)window.location.href=data.url;
+      else{alert("Erreur: "+data.error);setLoading(false)}
+    }catch(e){alert("Erreur de connexion");setLoading(false)}
+  };
+  return(
+    <div style={{maxWidth:440,margin:"0 auto",padding:"24px 0"}}>
+      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
+        <div style={{background:"var(--color-background-secondary)",padding:"20px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Logo size="sm"/><span style={{fontSize:12,color:"var(--color-text-tertiary)"}}>Paiement sécurisé</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:8}}><div><p style={{fontSize:16,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)"}}>CoteR PRO</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0}}>~4 mois, annule quand tu veux</p></div><p style={{fontSize:24,fontWeight:700,fontFamily:"'Space Mono',monospace",margin:0,color:"var(--color-text-primary)"}}>9,99$</p></div>
+        </div>
+        <div style={{padding:"16px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
+          {["Verdicts drop/keep","Tous les avis détaillés","Tags + stats avancées","Cote R + simulations"].map((f,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:i<3?6:0}}><div style={{width:16,height:16,borderRadius:"50%",background:"var(--color-background-success)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:9,color:"#1D9E75",fontWeight:500}}>&#10003;</span></div><span style={{fontSize:13,color:"var(--color-text-primary)"}}>{f}</span></div>
+          ))}
+        </div>
+        <div style={{padding:"20px 24px"}}>
+          <button onClick={handleCheckout} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"14px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",opacity:loading?0.8:1}}>{loading?"Redirection vers Stripe...":"Payer 9,99$ — Stripe Checkout"}</button>
+          <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"12px 0 0"}}>Tu seras redirigé vers Stripe pour payer de façon sécurisée.</p>
+        </div>
+        <button onClick={onClose} style={{width:"100%",background:"none",border:"none",borderTop:"0.5px solid var(--color-border-tertiary)",padding:"12px",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer"}}>&larr; Retour</button>
+      </div>
+    </div>
+  );
+}
+
+// ============ REVIEW CARD ============
+function ReviewCard({r}){const c=rc(r.rating);return(
+  <div style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"12px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,flexWrap:"wrap",gap:6}}>
+      <div style={{display:"flex",alignItems:"center",gap:7}}>
+        <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,fontFamily:"'Space Mono',monospace",background:r.rating>=4?"var(--color-background-success)":r.rating>=3?"var(--color-background-warning)":"var(--color-background-danger)",color:c,flexShrink:0}}>{r.rating}</div>
+        <div><p style={{fontSize:12,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{r.course}</p><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>{new Date(r.created_at).toLocaleDateString('fr-CA',{month:'short',year:'numeric'})}</p></div>
+      </div>
+      {r.grade&&<span style={{fontSize:11,padding:"2px 7px",borderRadius:"var(--border-radius-md)",background:"var(--color-background-secondary)",color:"var(--color-text-secondary)"}}>Note: {r.grade}</span>}
+    </div>
+    <p style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.55,margin:0}}>{r.review_text}</p>
+  </div>
+)}
+
+// ============ PROF DETAIL ============
+function ProfDetail({prof,reviews,isPro,goToPaywall,onBack}){
+  const rating=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length*10)/10:0;
+  const diff=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.difficulty,0)/reviews.length*10)/10:0;
+  const keepPct=reviews.length?Math.round(100*reviews.filter(r=>r.verdict==="keep").length/reviews.length):0;
+  const verdict=keepPct>=50?"keep":"drop";
+  return(
+    <div style={{maxWidth:580,margin:"0 auto"}}>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"0 0 14px"}}>&larr; Retour aux profs</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:18,gap:12}}>
+        <div style={{minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}><h1 style={{fontSize:"min(21px, 5vw)",fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{prof.name}</h1>{reviews.length>0&&<VBadge v={verdict} small/>}</div>
+          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{prof.dept} — {prof.cegep}</p>
+          {prof.courses&&prof.courses.length>0&&<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"3px 0 0"}}>{prof.courses.join(" · ")}</p>}
+        </div>
+        {reviews.length>0&&<div style={{textAlign:"center",flexShrink:0}}><p style={{fontSize:34,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(rating)}}>{rating}</p><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>/5</p></div>}
+      </div>
+      {reviews.length>0&&<>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
+          {[{l:"Reprendrait",v:`${keepPct}%`,c:keepPct>=70?"#1D9E75":keepPct>=50?"#EF9F27":"#E24B4A"},{l:"Difficulté",v:`${diff}/5`,c:"var(--color-text-primary)"},{l:"Avis",v:reviews.length,c:"var(--color-text-primary)"}].map((s,i)=>(
+            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>{s.l}</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:s.c}}>{s.v}</p></div>
+          ))}
+        </div>
+        <h2 style={{fontSize:15,fontWeight:500,margin:"0 0 12px",color:"var(--color-text-primary)"}}>Avis ({reviews.length})</h2>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          <ReviewCard r={reviews[0]}/>
+          {isPro?reviews.slice(1).map((r,i)=><ReviewCard key={i} r={r}/>):reviews.length>1&&(
+            <div style={{position:"relative"}}><div style={{filter:"blur(6px)",userSelect:"none",pointerEvents:"none"}}>{reviews.slice(1,3).map((r,i)=><ReviewCard key={i} r={r}/>)}</div><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}><p style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",margin:0}}>+{reviews.length-1} avis</p><button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"9px 22px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Débloquer — 9,99$/session</button></div></div>
+          )}
+        </div>
+      </>}
+      {reviews.length===0&&<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:14,color:"var(--color-text-tertiary)",margin:0}}>Aucun avis encore pour ce prof.</p></div>}
+    </div>
+  );
+}
+
+// ============ PROFS PAGE (reads from Supabase) ============
+function ProfsPage({isPro,goToPaywall,profs,reviewsByProf}){
+  const[search,setSearch]=useState("");const[cegep,setCegep]=useState("Cégep de Granby");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
+  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} isPro={isPro} goToPaywall={goToPaywall} onBack={()=>setSel(null)}/>}
+  const q=search.trim().toLowerCase();
+  const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
+  let list=q.length>=2?profsWithStats.filter(p=>p.name.toLowerCase().includes(q)||p.courses?.some(c=>c.toLowerCase().includes(q))||p.dept?.toLowerCase().includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
+  list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
+  return(
+    <div style={{maxWidth:580,margin:"0 auto"}}>
+      <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Rating des profs</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 14px"}}>Drop ou keep? Check avant de t'inscrire.</p>
+      <input type="text" placeholder="Chercher un prof ou cours (tous cégeps)..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:12}}/>
+      {q.length<2&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
+        <select value={cegep} onChange={e=>setCegep(e.target.value)} style={{...inp,width:"auto",flex:"1 1 180px",maxWidth:"100%",appearance:"auto",padding:"6px 8px",fontSize:12}}>{CEGEPS.map(c=><option key={c} value={c}>{c}</option>)}</select>
+        <div style={{display:"flex",gap:3}}>{[{id:"rating",l:"Meilleur"},{id:"difficulty",l:"Facile"}].map(s=>(<button key={s.id} onClick={()=>setSort(s.id)} style={{background:sort===s.id?"var(--color-background-secondary)":"transparent",border:"0.5px solid "+(sort===s.id?"var(--color-border-secondary)":"transparent"),borderRadius:"var(--border-radius-md)",padding:"4px 9px",fontSize:11,cursor:"pointer",color:sort===s.id?"var(--color-text-primary)":"var(--color-text-secondary)"}}>{s.l}</button>))}</div>
+      </div>}
+      {q.length>=2&&<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 12px"}}>{list.length} résultat{list.length!==1?"s":""}</p>}
+      {list.length===0?<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:15,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{q?"Aucun résultat":"Aucun prof ici encore"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>Sois le premier — clique "Évaluer"!</p></div>
+      :<div style={{display:"flex",flexDirection:"column",gap:9}}>{list.map(p=>(
+        <div key={p.id} onClick={()=>setSel(p)} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--color-border-secondary)"} onMouseLeave={e=>e.currentTarget.style.borderColor="var(--color-border-tertiary)"}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
+            <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{q.length>=2?` — ${p.cegep}`:""}</p></div>
+            {p.totalReviews>0&&<div style={{textAlign:"right",flexShrink:0}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
+          </div>
+          {p.totalReviews>0&&<div style={{display:"flex",gap:14}}>
+            <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Qualité</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.rating}/5</span></div><RBar value={p.rating}/></div>
+            <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Difficulté</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.difficulty}/5</span></div><RBar value={p.difficulty}/></div>
+          </div>}
+        </div>
+      ))}</div>}
+    </div>
+  );
+}
+
+// ============ SUBMIT PAGE (writes to Supabase) ============
+function SubmitPage({user,profs,goToLogin,onSubmitted}){
+  const[cegep,setCegep]=useState("Cégep de Granby");const[profName,setProfName]=useState("");const[dept,setDept]=useState("");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
+
+  if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
+  if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
+
+  const pq=profName.trim().toLowerCase();
+  const profSuggestions=pq.length>=2?profs.filter(p=>p.cegep===cegep&&p.name.toLowerCase().includes(pq)).slice(0,5):[];
+  const allCourses=[...new Set(profs.filter(p=>p.cegep===cegep).flatMap(p=>p.courses||[]))].sort();
+  const cq=course.trim().toLowerCase();
+  const courseSuggestions=cq.length>=2?allCourses.filter(c=>c.toLowerCase().includes(cq)).slice(0,5):[];
+  const selectProf=p=>{setProfName(p.name);setDept(p.dept||"");setShowProfSug(false)};
+  const existingMatch=pq.length>=3?profs.find(p=>p.name.toLowerCase()===formatName(profName).toLowerCase()&&p.cegep===cegep):null;
+
+  const handleSubmit=async()=>{
+    if(!profName.trim()||!course.trim()||!quality||!diff||!verdict||!review.trim()){setError("Remplis tous les champs.");return}
+    setError("");setLoading(true);
+    const formatted=formatName(profName);
+    try{
+      let profId;
+      const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===cegep);
+      if(existing){profId=existing.id}else{
+        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:dept||"Autre",courses:[course.trim()]}).select().single();
+        if(e)throw e;profId=data.id;
+      }
+      const{error:re}=await supabase.from('reviews').insert({prof_id:profId,user_id:user.id,course:course.trim(),rating:parseInt(quality),difficulty:parseInt(diff),verdict,review_text:review.trim()});
+      if(re)throw re;
+      // Add course to prof if new
+      if(existing&&!existing.courses?.includes(course.trim())){
+        await supabase.from('profs').update({courses:[...(existing.courses||[]),course.trim()]}).eq('id',profId);
+      }
+      onSubmitted();setSubmitted(true);
+    }catch(e){setError("Erreur: "+(e.message||"réessaie."));console.error(e)}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{maxWidth:500,margin:"0 auto"}}>
+      <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Évaluer un prof</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>100% anonyme. Aide les autres à faire le bon choix.</p>
+      {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div><label style={lbl}>Cégep</label><select value={cegep} onChange={e=>setCegep(e.target.value)} style={{...inp,appearance:"auto"}}>{CEGEPS.map(c=><option key={c}>{c}</option>)}</select></div>
+        <div style={{position:"relative"}}><label style={lbl}>Nom du prof</label>
+          <input type="text" placeholder="Commence à écrire..." value={profName} onChange={e=>{setProfName(e.target.value);setShowProfSug(true);setError("")}} onFocus={()=>setShowProfSug(true)} onBlur={()=>setTimeout(()=>setShowProfSug(false),200)} style={inp}/>
+          {showProfSug&&profSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{profSuggestions.map((p,i)=><button key={p.id} onMouseDown={()=>selectProf(p)} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:i<profSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}><div><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"1px 0 0"}}>{p.dept}</p></div></button>)}</div>}
+          {profName.trim().length>=3&&!existingMatch&&<p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:"4px 0 0"}}>Sera enregistré: <strong style={{fontWeight:500,color:"var(--color-text-secondary)"}}>{formatName(profName)}</strong></p>}
+          {existingMatch&&<div style={{marginTop:6,background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"8px 10px"}}><p style={{fontSize:12,color:"var(--color-text-info)",margin:0}}>Ce prof existe — ton avis sera ajouté à son profil.</p></div>}
+        </div>
+        <div><label style={lbl}>Département</label><select value={dept} onChange={e=>setDept(e.target.value)} style={{...inp,appearance:"auto"}}><option value="">Choisir...</option>{DEPTS.map(d=><option key={d}>{d}</option>)}</select></div>
+        <div style={{position:"relative"}}><label style={lbl}>Cours</label>
+          <input type="text" placeholder="ex: Méthodes quantitatives" value={course} onChange={e=>{setCourse(e.target.value);setShowCourseSug(true)}} onFocus={()=>setShowCourseSug(true)} onBlur={()=>setTimeout(()=>setShowCourseSug(false),200)} style={inp}/>
+          {showCourseSug&&courseSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{courseSuggestions.map((c,i)=><button key={c} onMouseDown={()=>{setCourse(c);setShowCourseSug(false)}} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",fontSize:14,color:"var(--color-text-primary)",borderBottom:i<courseSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>{c}</button>)}</div>}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><label style={lbl}>Qualité</label><div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setQuality(String(n))} style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:quality===String(n)?700:400,border:quality===String(n)?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:quality===String(n)?"var(--color-background-success)":"var(--color-background-primary)",color:quality===String(n)?"#1D9E75":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>)}</div></div>
+          <div><label style={lbl}>Difficulté</label><div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setDiff(String(n))} style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:diff===String(n)?700:400,border:diff===String(n)?"2px solid #EF9F27":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:diff===String(n)?"var(--color-background-warning)":"var(--color-background-primary)",color:diff===String(n)?"#BA7517":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>)}</div></div>
+        </div>
+        <div><label style={lbl}>Drop ou keep?</label><div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setVerdict("keep")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="keep"?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",cursor:"pointer"}}>KEEP</button>
+          <button onClick={()=>setVerdict("drop")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="drop"?"2px solid #E24B4A":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-danger)",color:"#E24B4A",cursor:"pointer"}}>DROP</button>
+        </div></div>
+        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} value={review} onChange={e=>setReview(e.target.value)} style={{...inp,resize:"vertical",fontFamily:"inherit"}}/></div>
+        <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",opacity:loading?0.8:1}}>{loading?"Envoi...":"Soumettre anonymement"}</button>
+      </div>
+    </div>
+  );
+}
+
+// ============ COTE R CALCULATOR ============
+function CalcPage(){
+  const[courses,setCourses]=useState([{name:"",grade:"",groupAvg:"",groupStd:""},{name:"",grade:"",groupAvg:"",groupStd:""},{name:"",grade:"",groupAvg:"",groupStd:""},{name:"",grade:"",groupAvg:"",groupStd:""},{name:"",grade:"",groupAvg:"",groupStd:""}]);
+  const update=(i,f,v)=>{if(f!=="name"&&v!==""&&(isNaN(v)||parseFloat(v)<0))return;if((f==="grade"||f==="groupAvg")&&parseFloat(v)>100)return;if(f==="groupStd"&&parseFloat(v)>50)return;const c=[...courses];c[i]={...c[i],[f]:v};setCourses(c)};
+  const coteR=calculateCoteR(courses);const filled=courses.filter(c=>c.grade&&c.groupAvg&&c.groupStd).length;
+  return(
+    <div style={{maxWidth:580,margin:"0 auto"}}>
+      <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Calculateur de cote R</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Entre ta note, la moyenne et l'écart-type du groupe.</p>
+      <div style={{background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:20,display:"flex",alignItems:"start",gap:8}}><span style={{fontSize:14,marginTop:1}}>&#9432;</span><p style={{fontSize:12,color:"var(--color-text-info)",margin:0,lineHeight:1.5}}>Trouve ces infos sur <strong style={{fontWeight:500}}>Omnivox → Résultats</strong> ou <strong style={{fontWeight:500}}>Léa → Mon dossier</strong>.</p></div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.5fr) repeat(3,minmax(0,1fr)) 28px",gap:6,padding:"0 2px"}}><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500}}>Cours</span><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500,textAlign:"center"}}>Note %</span><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500,textAlign:"center"}}>Moy.</span><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500,textAlign:"center"}}>Éc.-type</span><span/></div>
+        {courses.map((c,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"minmax(0,1.5fr) repeat(3,minmax(0,1fr)) 28px",gap:6,alignItems:"center"}}>
+          <input type="text" placeholder={`Cours ${i+1}`} value={c.name} onChange={e=>update(i,"name",e.target.value)} style={{padding:"8px 8px",fontSize:13,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box",minWidth:0}}/>
+          {["grade","groupAvg","groupStd"].map(f=><input key={f} type="text" inputMode="decimal" placeholder="—" value={c[f]} onChange={e=>update(i,f,e.target.value)} style={{padding:"8px 2px",fontSize:13,fontWeight:500,textAlign:"center",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-secondary)",color:"var(--color-text-primary)",boxSizing:"border-box",minWidth:0}}/>)}
+          <button onClick={()=>{if(courses.length>1)setCourses(courses.filter((_,j)=>j!==i))}} style={{background:"none",border:"none",fontSize:16,color:"var(--color-text-tertiary)",cursor:"pointer",padding:0}}>&times;</button>
+        </div>))}
+      </div>
+      <button onClick={()=>setCourses([...courses,{name:"",grade:"",groupAvg:"",groupStd:""}])} style={{background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"8px 16px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)",marginBottom:20}}>+ Ajouter un cours</button>
+      {coteR!==null?<div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"22px",textAlign:"center",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:0,left:0,right:0,height:3,background:coteR>=30?"#1D9E75":coteR>=25?"#EF9F27":"#E24B4A"}}/><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:"0 0 3px"}}>Cote R estimée ({filled} cours)</p><p style={{fontSize:38,fontWeight:700,margin:"0 0 4px",fontFamily:"'Space Mono',monospace",color:coteR>=30?"#1D9E75":coteR>=25?"#EF9F27":"#E24B4A"}}>{coteR}</p><p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:0}}>{coteR>=32?"Excellent":coteR>=27?"Solide":coteR>=24?"Correct":"À améliorer"}</p></div>
+      :<div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"28px",textAlign:"center"}}><p style={{fontSize:13,color:"var(--color-text-tertiary)",margin:0}}>Remplis au moins un cours complet</p></div>}
+    </div>
+  );
+}
+
+// ============ MAIN APP ============
+export default function App(){
+  const[page,setPage]=useState("landing");const[prevPage,setPrevPage]=useState("profs");
+  const[isPro,setIsPro]=useState(false);const[user,setUser]=useState(null);
+  const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
+  const[loading,setLoading]=useState(true);
+
+  // Load auth state
+  useEffect(()=>{
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
+    });
+    const{data:{subscription}}=supabase.auth.onAuthStateChange((ev,session)=>{
+      if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
+      else setUser(null);
+    });
+    return()=>subscription.unsubscribe();
+  },[]);
+
+  // Check for Stripe success redirect
+  useEffect(()=>{
+    if(typeof window!=="undefined"){
+      const params=new URLSearchParams(window.location.search);
+      if(params.get("pro")==="success"){setIsPro(true);window.history.replaceState({},"","/");}
+    }
+  },[]);
+
+  // Load profs and reviews from Supabase
+  const loadData=async()=>{
+    setLoading(true);
+    const{data:profsData}=await supabase.from('profs').select('*').order('name');
+    const{data:reviewsData}=await supabase.from('reviews').select('*').order('created_at',{ascending:false});
+    if(profsData)setProfs(profsData);
+    if(reviewsData){
+      const grouped={};
+      reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});
+      setReviewsByProf(grouped);
+    }
+    setLoading(false);
+  };
+  useEffect(()=>{loadData()},[]);
+
+  const go=t=>{setPrevPage(page);setPage(t)};
+  const goToLogin=()=>go("login");const goToPaywall=()=>go("paywall");const goToAccount=()=>go("account");
+  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);setPage("profs")};
+  const wrap=ch=><div style={{maxWidth:680,margin:"0 auto",padding:"0 16px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
+
+  if(page==="landing")return wrap(<Landing onStart={()=>setPage("profs")}/>);
+
+  return wrap(<>
+    {!["login","account"].includes(page)&&<Nav page={page} setPage={setPage} isPro={isPro} goToPaywall={goToPaywall} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
+    {loading&&page==="profs"&&<div style={{textAlign:"center",padding:"60px 0"}}><p style={{color:"var(--color-text-tertiary)"}}>Chargement...</p></div>}
+    {!loading&&page==="profs"&&<ProfsPage isPro={isPro} goToPaywall={goToPaywall} profs={profs} reviewsByProf={reviewsByProf}/>}
+    {page==="calc"&&<CalcPage/>}
+    {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData}/>}
+    {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)}/>}
+    {page==="paywall"&&<StripePage onClose={()=>setPage(prevPage)} user={user} isPro={isPro} openLogin={()=>{setPrevPage("paywall");setPage("login")}}/>}
+    {page==="account"&&<AccountPage user={user} isPro={isPro} goToPaywall={goToPaywall} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/>}
+    <footer style={{marginTop:48,paddingTop:14,paddingBottom:24,borderTop:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+      <Logo size="sm"/><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>Fait par des étudiants, pour les étudiants.</p>
+    </footer>
+  </>);
+}
