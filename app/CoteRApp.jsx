@@ -6,6 +6,7 @@ const CEGEPS = ["Cégep de l'Abitibi-Témiscamingue","Cégep d'Ahuntsic","Collè
 const DEPTS = ["Sciences humaines","Sciences de la nature","Philosophie","Français","Mathématiques","Éducation physique","Anglais","Administration","Arts","Informatique","Soins infirmiers","Autre"];
 
 function formatName(r){return r.trim().split(/\s+/).map(w=>{if(w.startsWith("d'")||w.startsWith("D'"))return w[0].toLowerCase()+"'"+w[2].toUpperCase()+w.slice(3).toLowerCase();if(["de","du","des","le","la","les"].includes(w.toLowerCase()))return w.toLowerCase();return w[0].toUpperCase()+w.slice(1).toLowerCase()}).join(" ").replace(/^(.)/,(_,c)=>c.toUpperCase())}
+const norm=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 
 function calculateCoteR(courses){const v=courses.filter(c=>c.grade&&c.groupAvg&&c.groupStd);if(!v.length)return null;let t=0,n=0;for(const c of v){const g=parseFloat(c.grade),a=parseFloat(c.groupAvg),s=parseFloat(c.groupStd);if(isNaN(g)||isNaN(a)||isNaN(s)||s===0)continue;t+=((g-a)/s)*(1+(a-72)/100);n++}if(!n)return null;return Math.round((25+(t/n)*5)*10)/10}
 
@@ -42,7 +43,7 @@ function Nav({page,setPage,isPro,goToPaywall,user,goToLogin,goToAccount}){
 // ============ ACCOUNT PAGE ============
 function AccountPage({user,isPro,goToPaywall,onLogout,onBack}){
   return(
-    <div style={{maxWidth:420,margin:"0 auto",padding:"24px 0"}}>
+    <div style={{maxWidth:520,margin:"0 auto",padding:"24px 0"}}>
       <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"0 0 16px"}}>&larr; Retour</button>
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",border:"0.5px solid var(--color-border-tertiary)",padding:"28px 24px"}}>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
@@ -98,7 +99,7 @@ function LoginPage({onClose}){
     setLoading(false);
   };
   return(
-    <div style={{maxWidth:380,margin:"0 auto",padding:"40px 0"}}>
+    <div style={{maxWidth:460,margin:"0 auto",padding:"40px 0"}}>
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"28px 24px",border:"0.5px solid var(--color-border-tertiary)"}}>
         <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>{isSignUp?"Creer un compte":"Connexion"}</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{isSignUp?"Gratuit, ca prend 10 secondes.":"Connecte-toi pour evaluer tes profs."}</p></div>
         {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
@@ -130,7 +131,7 @@ function StripePage({onClose,user,isPro,openLogin}){
     }catch(e){alert("Erreur de connexion");setLoading(false)}
   };
   return(
-    <div style={{maxWidth:440,margin:"0 auto",padding:"24px 0"}}>
+    <div style={{maxWidth:540,margin:"0 auto",padding:"24px 0"}}>
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
         <div style={{background:"var(--color-background-secondary)",padding:"20px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Logo size="sm"/><span style={{fontSize:12,color:"var(--color-text-tertiary)"}}>Paiement sécurisé</span></div>
@@ -172,7 +173,7 @@ function ProfDetail({prof,reviews,isPro,goToPaywall,onBack,onEvaluate}){
   const keepPct=reviews.length?Math.round(100*reviews.filter(r=>r.verdict==="keep").length/reviews.length):0;
   const verdict=keepPct>=50?"keep":"drop";
   return(
-    <div style={{maxWidth:580,margin:"0 auto"}}>
+    <div style={{maxWidth:720,margin:"0 auto"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:0}}>&larr; Retour aux profs</button>
         <button onClick={()=>onEvaluate(prof)} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Évaluer</button>
@@ -219,12 +220,12 @@ function ProfDetail({prof,reviews,isPro,goToPaywall,onBack,onEvaluate}){
 function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
   const[search,setSearch]=useState("");const[cegep,setCegep]=useState("Cégep de Granby");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
   if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} isPro={isPro} goToPaywall={goToPaywall} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
-  const q=search.trim().toLowerCase();
+  const q=norm(search.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
-  let list=q.length>=2?profsWithStats.filter(p=>p.name.toLowerCase().includes(q)||p.courses?.some(c=>c.toLowerCase().includes(q))||p.dept?.toLowerCase().includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
+  let list=q.length>=2?profsWithStats.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
   return(
-    <div style={{maxWidth:580,margin:"0 auto"}}>
+    <div style={{maxWidth:720,margin:"0 auto"}}>
       <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Rating des profs</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 14px"}}>Drop ou keep? Check avant de t'inscrire.</p>
       <input type="text" placeholder="Chercher un prof ou cours (tous cégeps)..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:12}}/>
@@ -260,13 +261,13 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
   if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
 
-  const pq=profName.trim().toLowerCase();
-  const profSuggestions=pq.length>=2?profs.filter(p=>p.cegep===cegep&&p.name.toLowerCase().includes(pq)).slice(0,5):[];
+  const pq=norm(profName.trim());
+  const profSuggestions=pq.length>=2?profs.filter(p=>p.cegep===cegep&&norm(p.name).includes(pq)).slice(0,5):[];
   const allCourses=[...new Set(profs.filter(p=>p.cegep===cegep).flatMap(p=>p.courses||[]))].sort();
   const cq=course.trim().toLowerCase();
   const courseSuggestions=cq.length>=2?allCourses.filter(c=>c.toLowerCase().includes(cq)).slice(0,5):[];
   const selectProf=p=>{setProfName(p.name);setDept(p.dept||"");setCourse("");setCustomCourse(false);setShowProfSug(false)};
-  const existingMatch=pq.length>=3?profs.find(p=>p.name.toLowerCase()===formatName(profName).toLowerCase()&&p.cegep===cegep):null;
+  const existingMatch=pq.length>=3?profs.find(p=>norm(p.name)===norm(formatName(profName))&&p.cegep===cegep):null;
   const profCourses=existingMatch?.courses||[];
 
   const handleSubmit=async()=>{
@@ -292,7 +293,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   };
 
   return(
-    <div style={{maxWidth:500,margin:"0 auto"}}>
+    <div style={{maxWidth:620,margin:"0 auto"}}>
       <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Évaluer un prof</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>100% anonyme. Aide les autres à faire le bon choix.</p>
       {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
@@ -341,7 +342,7 @@ function CalcPage(){
   const update=(i,f,v)=>{if(f!=="name"&&v!==""&&(isNaN(v)||parseFloat(v)<0))return;if((f==="grade"||f==="groupAvg")&&parseFloat(v)>100)return;if(f==="groupStd"&&parseFloat(v)>50)return;const c=[...courses];c[i]={...c[i],[f]:v};setCourses(c)};
   const coteR=calculateCoteR(courses);const filled=courses.filter(c=>c.grade&&c.groupAvg&&c.groupStd).length;
   return(
-    <div style={{maxWidth:580,margin:"0 auto"}}>
+    <div style={{maxWidth:720,margin:"0 auto"}}>
       <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Calculateur de cote R</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Entre ta note, la moyenne et l'écart-type du groupe.</p>
       <div style={{background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:20,display:"flex",alignItems:"start",gap:8}}><span style={{fontSize:14,marginTop:1}}>&#9432;</span><p style={{fontSize:12,color:"var(--color-text-info)",margin:0,lineHeight:1.5}}>Trouve ces infos sur <strong style={{fontWeight:500}}>Omnivox → Résultats</strong> ou <strong style={{fontWeight:500}}>Léa → Mon dossier</strong>.</p></div>
@@ -362,7 +363,7 @@ function CalcPage(){
 
 // ============ MAIN APP ============
 export default function App(){
-  const[page,setPage]=useState("landing");const[prevPage,setPrevPage]=useState("profs");
+  const[page,setPage]=useState(()=>{try{const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
   const[isPro,setIsPro]=useState(false);const[user,setUser]=useState(null);
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
   const[loading,setLoading]=useState(true);
@@ -418,16 +419,17 @@ export default function App(){
     }
   },[user]);
 
-  const go=t=>{setPrevPage(page);setPage(t)};
+  const go=t=>{setPrevPage(page);setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
   const goToLogin=()=>go("login");const goToPaywall=()=>go("paywall");const goToAccount=()=>go("account");
   const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
-  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);setPage("profs")};
-  const wrap=ch=><div style={{maxWidth:680,margin:"0 auto",padding:"0 16px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
+  const navTo=t=>{setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
+  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);navTo("profs")};
+  const wrap=ch=><div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
-  if(page==="landing")return wrap(<Landing onStart={()=>setPage("profs")}/>);
+  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")}/>);
 
   return wrap(<>
-    {!["login","account"].includes(page)&&<Nav page={page} setPage={setPage} isPro={isPro} goToPaywall={goToPaywall} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
+    {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} isPro={isPro} goToPaywall={goToPaywall} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
     {loading&&page==="profs"&&<div style={{textAlign:"center",padding:"60px 0"}}><p style={{color:"var(--color-text-tertiary)"}}>Chargement...</p></div>}
     {!loading&&page==="profs"&&<ProfsPage isPro={isPro} goToPaywall={goToPaywall} profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate}/>}
     {page==="calc"&&<CalcPage/>}
