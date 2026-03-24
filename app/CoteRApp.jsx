@@ -66,7 +66,7 @@ function calculateCoteR(courses){const v=courses.filter(c=>c.grade&&c.groupAvg&&
 // ============ COMPONENTS ============
 function Logo({size="lg"}){const s=size==="lg"?{t:28,d:10}:{t:17,d:7};return<span style={{display:"inline-flex",alignItems:"center",gap:4,cursor:"pointer"}}><span style={{fontFamily:"'Space Mono',monospace",fontSize:s.t,fontWeight:700,letterSpacing:"-0.03em",color:"var(--color-text-primary)"}}>coteR</span><span style={{width:s.d,height:s.d,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/></span>}
 function VBadge({v,small}){const k=v==="keep";return<span style={{display:"inline-block",fontSize:small?10:12,fontWeight:500,padding:small?"2px 7px":"4px 11px",borderRadius:"var(--border-radius-md)",background:k?"var(--color-background-success)":"var(--color-background-danger)",color:k?"#1D9E75":"#E24B4A"}}>{k?"KEEP":"DROP"}</span>}
-function RBar({value}){const c=value>=4?"#1D9E75":value>=3?"#EF9F27":"#E24B4A";return<div style={{height:5,background:"var(--color-background-secondary)",borderRadius:3,flex:1}}><div style={{height:"100%",width:`${(value/5)*100}%`,background:c,borderRadius:3}}/></div>}
+function RBar({value,invert}){const c=invert?(value<=2?"#1D9E75":value<=3?"#EF9F27":"#E24B4A"):(value>=4?"#1D9E75":value>=3?"#EF9F27":"#E24B4A");return<div style={{height:5,background:"var(--color-background-secondary)",borderRadius:3,flex:1}}><div style={{height:"100%",width:`${(value/5)*100}%`,background:c,borderRadius:3}}/></div>}
 const rc=v=>v>=4?"#1D9E75":v>=3?"#EF9F27":"#E24B4A";
 const inp={width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"};
 const lbl={fontSize:12,fontWeight:500,color:"var(--color-text-secondary)",display:"block",marginBottom:5};
@@ -396,7 +396,7 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
           </div>
           {p.totalReviews>0&&<div style={{display:"flex",gap:14}}>
             <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Qualité</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.rating}/5</span></div><RBar value={p.rating}/></div>
-            <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Difficulté</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.difficulty}/5</span></div><RBar value={p.difficulty}/></div>
+            <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Difficulté</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.difficulty}/5</span></div><RBar value={p.difficulty} invert/></div>
           </div>}
         </div>
       ))}</div>}
@@ -539,8 +539,12 @@ function CalcPage(){
 }
 
 // ============ MAIN APP ============
+const PAGE_HASH={landing:"",profs:"profs",calc:"calc",submit:"evaluer",login:"connexion",account:"compte"};
+const HASH_PAGE=Object.fromEntries(Object.entries(PAGE_HASH).map(([k,v])=>[v,k]));
+function syncHash(t){try{const h=PAGE_HASH[t]??'';window.history.pushState({page:t},'',h?'#'+h:window.location.pathname+window.location.search)}catch{}}
+
 export default function App(){
-  const[page,setPage]=useState(()=>{try{const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
+  const[page,setPage]=useState(()=>{try{const hash=window.location.hash.replace('#','');if(hash&&!hash.includes('=')&&HASH_PAGE[hash])return HASH_PAGE[hash];const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
   const[user,setUser]=useState(null);
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});const[allLikes,setAllLikes]=useState([]);
   const[loading,setLoading]=useState(true);
@@ -590,7 +594,13 @@ export default function App(){
   const likesByReview=useMemo(()=>{const m={};allLikes.forEach(l=>{m[l.review_id]=(m[l.review_id]||0)+1});return m},[allLikes]);
   const userLikes=useMemo(()=>new Set(user?allLikes.filter(l=>l.user_id===user.id).map(l=>l.review_id):[]),[allLikes,user]);
 
-  const go=t=>{setPrevPage(page);setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
+  useEffect(()=>{
+    const onPop=()=>{const hash=window.location.hash.replace('#','');if(hash.includes('='))return;const p=HASH_PAGE[hash]||'profs';setPage(p);try{if(p!=="login")localStorage.setItem("coter_page",p)}catch{}};
+    window.addEventListener('popstate',onPop);
+    return()=>window.removeEventListener('popstate',onPop);
+  },[]);
+
+  const go=t=>{setPrevPage(page);setPage(t);syncHash(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
   const goToLogin=()=>go("login");const goToAccount=()=>go("account");
 
   const toggleLike=async(reviewId)=>{
@@ -605,7 +615,7 @@ export default function App(){
     }
   };
   const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
-  const navTo=t=>{setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
+  const navTo=t=>{setPage(t);syncHash(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);navTo("profs")};
   const wrap=ch=><div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
