@@ -28,13 +28,13 @@ function isEmailAllowed(email){
   const domain=(email.split("@")[1]||"").toLowerCase();
   if(!domain)return false;
   if(ALLOWED_EMAIL_DOMAINS.has(domain))return true;
-  // Domaines institutionnels québécois (.qc.ca) et canadiens (.gc.ca)
   if(domain.endsWith(".qc.ca"))return true;
   if(domain.endsWith(".gc.ca"))return true;
-  // Domaines universitaires
   if(domain.endsWith(".edu"))return true;
   return false;
 }
+
+function sanitize(str){return(str||"").replace(/<[^>]*>/g,"").replace(/[<>`]/g,"").trim()}
 
 const CEGEPS = ["Cégep de l'Abitibi-Témiscamingue","Cégep d'Ahuntsic","Collège d'Alma","Cégep André-Laurendeau","Cégep de Baie-Comeau","Cégep Beauce-Appalaches","Cégep de Bois-de-Boulogne","Champlain Regional College","Cégep de Chicoutimi","Collège Dawson","Cégep de Drummondville","Cégep Édouard-Montpetit","Cégep Garneau","Cégep de la Gaspésie et des Îles","Cégep Gérald-Godin","Cégep de Granby","Cégep Heritage","Cégep John Abbott","Cégep de Jonquière","Cégep de La Pocatière","Cégep de Lanaudière à Joliette","Cégep de Lanaudière à L'Assomption","Cégep de Lanaudière à Terrebonne","Cégep de Lévis","Cégep Limoilou","Cégep Lionel-Groulx","Cégep de Maisonneuve","Cégep Marie-Victorin","Cégep de Matane","Cégep Montmorency","Cégep de l'Outaouais","Cégep de Rimouski","Cégep de Rivière-du-Loup","Cégep de Rosemont","Cégep de Sainte-Foy","Cégep de Saint-Hyacinthe","Cégep de Saint-Jérôme","Cégep Saint-Jean-sur-Richelieu","Cégep de Saint-Laurent","Cégep de Sept-Îles","Cégep de Shawinigan","Cégep de Sherbrooke","Cégep de Sorel-Tracy","Cégep de St-Félicien","Cégep de Thetford","Cégep de Trois-Rivières","Cégep de Valleyfield","Cégep Vanier","Cégep de Victoriaville","Cégep du Vieux Montréal"].sort((a,b)=>a.localeCompare(b,"fr"));
 const DEPTS = ["Sciences humaines","Sciences de la nature","Philosophie","Français","Mathématiques","Éducation physique","Anglais","Administration","Arts","Informatique","Soins infirmiers","Autre"];
@@ -82,7 +82,7 @@ function AccountPage({user,isPro,goToPaywall,onLogout,onBack}){
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",border:"0.5px solid var(--color-border-tertiary)",padding:"28px 24px"}}>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
           <div style={{width:52,height:52,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"var(--color-text-info)",flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</div>
-          <div style={{minWidth:0}}><p style={{fontSize:18,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name||"Utilisateur"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,overflow:"hidden",textOverflow:"ellipsis"}}>{user.email}</p></div>
+          <div style={{minWidth:0}}><p style={{fontSize:18,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name||"Utilisateur"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,overflow:"hidden",textOverflow:"ellipsis"}}>{(e=>{const[l,d]=e.split("@");return l.slice(0,3)+"***@***."+(d?.split(".").pop()||"com")})(user.email||"")}</p></div>
         </div>
         <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"16px",marginBottom:20}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -127,13 +127,15 @@ function LoginPage({onClose}){
     if(!email||!password){setError("Entre ton email et mot de passe.");return}
     if(password.length<6){setError("Mot de passe: 6 caracteres minimum.");return}
     if(isSignUp&&!isEmailAllowed(email)){setError("Ce domaine d'email n'est pas accepté. Utilise Gmail, Outlook, Yahoo, ou ton email scolaire (.qc.ca).");return}
-    if(!captchaToken){setError("Complète le captcha avant de continuer.");return}
+    if(sitekey&&!captchaToken){setError("Complète le captcha avant de continuer.");return}
     setLoading(true);setError("");
     if(isSignUp){
-      const{error:e}=await supabase.auth.signUp({email,password,options:{captchaToken}});
+      const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
+      const{error:e}=await supabase.auth.signUp({email,password,...opts});
       if(e){setError(e.message);setLoading(false);captchaRef.current?.resetCaptcha();setCaptchaToken(null);return}
     }else{
-      const{error:e}=await supabase.auth.signInWithPassword({email,password,options:{captchaToken}});
+      const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
+      const{error:e}=await supabase.auth.signInWithPassword({email,password,...opts});
       if(e){setError("Email ou mot de passe incorrect.");setLoading(false);captchaRef.current?.resetCaptcha();setCaptchaToken(null);return}
     }
     setLoading(false);
@@ -144,8 +146,8 @@ function LoginPage({onClose}){
         <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>{isSignUp?"Creer un compte":"Connexion"}</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{isSignUp?"Gratuit, ca prend 10 secondes.":"Connecte-toi pour evaluer tes profs."}</p></div>
         {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
-          <input type="password" placeholder="Mot de passe (6+ caracteres)" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{...inp}}/>
+          <input type="email" placeholder="ton@email.com" autoComplete="off" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
+          <input type="password" placeholder="Mot de passe (6+ caracteres)" autoComplete="off" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{...inp}}/>
           {sitekey&&<div style={{display:"flex",justifyContent:"center",margin:"4px 0"}}><HCaptcha ref={captchaRef} sitekey={sitekey} onVerify={token=>setCaptchaToken(token)} onExpire={()=>setCaptchaToken(null)} theme="auto"/></div>}
           <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer"}}>{loading?"...":(isSignUp?"Creer mon compte":"Se connecter")}</button>
         </div>
@@ -297,7 +299,7 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
 
 // ============ SUBMIT PAGE (writes to Supabase) ============
 function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
-  const[cegep,setCegep]=useState(prefill?.cegep||"Cégep de Granby");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[customCourse,setCustomCourse]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
+  const[cegep,setCegep]=useState(prefill?.cegep||"Cégep de Granby");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[customCourse,setCustomCourse]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[lastSubmitTime,setLastSubmitTime]=useState(0);const[submitCooldown,setSubmitCooldown]=useState(false);
 
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
   if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
@@ -312,12 +314,23 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   const profCourses=existingMatch?.courses||[];
 
   const handleSubmit=async()=>{
-    if(!profName.trim()||!course.trim()||!quality||!diff||!verdict||!review.trim()){setError("Remplis tous les champs.");return}
-    if(review.trim().length<20){setError("Ton avis doit contenir au moins 20 caractères.");return}
+    // Rate limit frontend: 60s entre soumissions
+    if(Date.now()-lastSubmitTime<60000&&lastSubmitTime>0){setError("Attends 1 minute avant de soumettre un autre avis.");return}
+    const cleanName=sanitize(profName);const cleanCourse=sanitize(course);const cleanReview=sanitize(review);const cleanDept=sanitize(dept);
+    if(!cleanName||!cleanCourse||!quality||!diff||!verdict||!cleanReview){setError("Remplis tous les champs.");return}
+    if(cleanName.length<3||cleanName.length>100){setError("Nom du prof: entre 3 et 100 caractères.");return}
+    if(cleanCourse.length<3||cleanCourse.length>100){setError("Cours: entre 3 et 100 caractères.");return}
+    if(cleanReview.length<10||cleanReview.length>1000){setError("Avis: entre 10 et 1000 caractères.");return}
+    const ratingNum=parseInt(quality);const diffNum=parseInt(diff);
+    if(![1,2,3,4,5].includes(ratingNum)){setError("Qualité invalide.");return}
+    if(![1,2,3,4,5].includes(diffNum)){setError("Difficulté invalide.");return}
+    if(!["keep","drop"].includes(verdict)){setError("Verdict invalide.");return}
+    if(!CEGEPS.includes(cegep)){setError("Cégep invalide.");return}
+    if(cleanDept&&!DEPTS.includes(cleanDept)){setError("Département invalide.");return}
     setError("");setLoading(true);
-    const formatted=formatName(profName);
+    const formatted=formatName(cleanName);
     try{
-      // Rate limiting: max 5 reviews per 24h
+      // Rate limit Supabase: max 5 par 24h
       const since=new Date(Date.now()-24*60*60*1000).toISOString();
       const{count:recentCount,error:rcErr}=await supabase.from('reviews').select('*',{count:'exact',head:true}).eq('user_id',user.id).gte('created_at',since);
       if(!rcErr&&recentCount>=5){setError("Limite atteinte : max 5 évaluations par 24h.");setLoading(false);return}
@@ -325,19 +338,21 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
       let profId;
       const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===cegep);
       if(existing){profId=existing.id}else{
-        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:dept||"Autre",courses:[course.trim().slice(0,100)]}).select().single();
+        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:cleanDept||"Autre",courses:[cleanCourse]}).select().single();
         if(e)throw e;profId=data.id;
       }
 
       // Duplicate check: 1 review per user per prof per course
-      const{count:dupCount,error:dcErr}=await supabase.from('reviews').select('*',{count:'exact',head:true}).eq('user_id',user.id).eq('prof_id',profId).eq('course',course.trim().slice(0,100));
+      const{count:dupCount,error:dcErr}=await supabase.from('reviews').select('*',{count:'exact',head:true}).eq('user_id',user.id).eq('prof_id',profId).eq('course',cleanCourse);
       if(!dcErr&&dupCount>0){setError("Tu as déjà évalué ce prof pour ce cours.");setLoading(false);return}
 
-      const{error:re}=await supabase.from('reviews').insert({prof_id:profId,user_id:user.id,course:course.trim().slice(0,100),rating:parseInt(quality),difficulty:parseInt(diff),verdict,review_text:review.trim().slice(0,2000)});
+      const{error:re}=await supabase.from('reviews').insert({prof_id:profId,user_id:user.id,course:cleanCourse,rating:ratingNum,difficulty:diffNum,verdict,review_text:cleanReview});
       if(re)throw re;
-      if(existing&&!existing.courses?.includes(course.trim())){
-        await supabase.from('profs').update({courses:[...(existing.courses||[]),course.trim().slice(0,100)]}).eq('id',profId);
+      if(existing&&!existing.courses?.includes(cleanCourse)){
+        await supabase.from('profs').update({courses:[...(existing.courses||[]),cleanCourse]}).eq('id',profId);
       }
+      setLastSubmitTime(Date.now());
+      setSubmitCooldown(true);setTimeout(()=>setSubmitCooldown(false),5000);
       onSubmitted();setSubmitted(true);
     }catch(e){setError("Erreur: "+(e.message||"réessaie."));console.error(e)}
     setLoading(false);
@@ -351,7 +366,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div><label style={lbl}>Cégep</label><select value={cegep} onChange={e=>setCegep(e.target.value)} style={{...inp,appearance:"auto"}}>{CEGEPS.map(c=><option key={c}>{c}</option>)}</select></div>
         <div style={{position:"relative"}}><label style={lbl}>Nom du prof</label>
-          <input type="text" placeholder="Commence à écrire..." value={profName} onChange={e=>{setProfName(e.target.value);setShowProfSug(true);setError("")}} onFocus={()=>setShowProfSug(true)} onBlur={()=>setTimeout(()=>setShowProfSug(false),200)} style={inp}/>
+          <input type="text" placeholder="Commence à écrire..." maxLength={100} value={profName} onChange={e=>{setProfName(e.target.value);setShowProfSug(true);setError("")}} onFocus={()=>setShowProfSug(true)} onBlur={()=>setTimeout(()=>setShowProfSug(false),200)} style={inp}/>
           {showProfSug&&profSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{profSuggestions.map((p,i)=><button key={p.id} onMouseDown={()=>selectProf(p)} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:i<profSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}><div><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"1px 0 0"}}>{p.dept}</p></div></button>)}</div>}
           {profName.trim().length>=3&&!existingMatch&&<p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:"4px 0 0"}}>Sera enregistré: <strong style={{fontWeight:500,color:"var(--color-text-secondary)"}}>{formatName(profName)}</strong></p>}
           {existingMatch&&<div style={{marginTop:6,background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"8px 10px"}}><p style={{fontSize:12,color:"var(--color-text-info)",margin:0}}>Ce prof existe — ton avis sera ajouté à son profil.</p></div>}
@@ -367,7 +382,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
           ):(
             <div style={{position:"relative"}}>
               {profCourses.length>0&&<button type="button" onClick={()=>{setCustomCourse(false);setCourse("")}} style={{background:"none",border:"none",fontSize:11,color:"#1D9E75",cursor:"pointer",padding:"0 0 5px",display:"block"}}>&larr; Choisir parmi les cours existants</button>}
-              <input type="text" placeholder="ex: Méthodes quantitatives" value={course} onChange={e=>{setCourse(e.target.value);setShowCourseSug(true)}} onFocus={()=>setShowCourseSug(true)} onBlur={()=>setTimeout(()=>setShowCourseSug(false),200)} style={inp}/>
+              <input type="text" placeholder="ex: Méthodes quantitatives" maxLength={100} value={course} onChange={e=>{setCourse(e.target.value);setShowCourseSug(true)}} onFocus={()=>setShowCourseSug(true)} onBlur={()=>setTimeout(()=>setShowCourseSug(false),200)} style={inp}/>
               {showCourseSug&&courseSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{courseSuggestions.map((c,i)=><button key={c} onMouseDown={()=>{setCourse(c);setShowCourseSug(false)}} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",fontSize:14,color:"var(--color-text-primary)",borderBottom:i<courseSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>{c}</button>)}</div>}
             </div>
           )}
@@ -380,8 +395,8 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
           <button onClick={()=>setVerdict("keep")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="keep"?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",cursor:"pointer"}}>KEEP</button>
           <button onClick={()=>setVerdict("drop")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="drop"?"2px solid #E24B4A":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-danger)",color:"#E24B4A",cursor:"pointer"}}>DROP</button>
         </div></div>
-        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} value={review} onChange={e=>setReview(e.target.value.slice(0,2000))} style={{...inp,resize:"vertical",fontFamily:"inherit"}}/><p style={{fontSize:11,color:review.length>1800?"#E24B4A":"var(--color-text-tertiary)",textAlign:"right",margin:"3px 0 0"}}>{review.length}/2000</p></div>
-        <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",opacity:loading?0.8:1}}>{loading?"Envoi...":"Soumettre anonymement"}</button>
+        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} maxLength={1000} value={review} onChange={e=>setReview(e.target.value.slice(0,1000))} style={{...inp,resize:"vertical",fontFamily:"inherit"}}/><p style={{fontSize:11,color:review.length>900?"#E24B4A":"var(--color-text-tertiary)",textAlign:"right",margin:"3px 0 0"}}>{review.length}/1000</p></div>
+        <button onClick={handleSubmit} disabled={loading||submitCooldown} style={{width:"100%",background:(loading||submitCooldown)?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:(loading||submitCooldown)?"wait":"pointer",opacity:(loading||submitCooldown)?0.8:1}}>{loading?"Envoi...":"Soumettre anonymement"}</button>
       </div>
     </div>
   );
@@ -415,7 +430,7 @@ function CalcPage(){
 // ============ MAIN APP ============
 export default function App(){
   const[page,setPage]=useState(()=>{try{const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
-  const[isPro,setIsPro]=useState(false);const[user,setUser]=useState(null);
+  const[isPro,setIsPro]=useState(true);const[user,setUser]=useState(null);
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
   const[loading,setLoading]=useState(true);
   const[submitPrefill,setSubmitPrefill]=useState(null);

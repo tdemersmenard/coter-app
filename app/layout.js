@@ -10,6 +10,9 @@ export default function RootLayout({ children }) {
     <html lang="fr">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
+        <meta httpEquiv="X-Frame-Options" content="DENY" />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
         <link
           href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap"
           rel="stylesheet"
