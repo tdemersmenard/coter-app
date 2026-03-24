@@ -134,7 +134,7 @@ function StripePage({onClose,user,isPro,openLogin}){
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
         <div style={{background:"var(--color-background-secondary)",padding:"20px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Logo size="sm"/><span style={{fontSize:12,color:"var(--color-text-tertiary)"}}>Paiement sécurisé</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:8}}><div><p style={{fontSize:16,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)"}}>CoteR PRO</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0}}>~3 mois, annule quand tu veux</p></div><p style={{fontSize:24,fontWeight:700,fontFamily:"'Space Mono',monospace",margin:0,color:"var(--color-text-primary)"}}>9,99$</p></div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:8}}><div><p style={{fontSize:16,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)"}}>CoteR PRO</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0}}>~4 mois, annule quand tu veux</p></div><p style={{fontSize:24,fontWeight:700,fontFamily:"'Space Mono',monospace",margin:0,color:"var(--color-text-primary)"}}>9,99$</p></div>
         </div>
         <div style={{padding:"16px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
           {["Verdicts drop/keep","Tous les avis détaillés","Tags + stats avancées","Cote R + simulations"].map((f,i)=>(
@@ -364,11 +364,10 @@ export default function App(){
   },[]);
 
   // Check for Stripe success redirect
- // Check for Stripe success redirect
   useEffect(()=>{
-    if(typeof window!=="undefined"){
+    if(typeof window!=="undefined"&&user){
       const params=new URLSearchParams(window.location.search);
-      if(params.get("pro")==="success"&&user){
+      if(params.get("pro")==="success"){
         supabase.from('pro_users').upsert({user_id:user.id}).then(()=>{setIsPro(true)});
         window.history.replaceState({},"","/");
       }
@@ -389,7 +388,8 @@ export default function App(){
     setLoading(false);
   };
   useEffect(()=>{loadData()},[]);
-  
+
+  // Check pro status on login
   useEffect(()=>{
     if(user){
       supabase.from('pro_users').select('user_id').eq('user_id',user.id).single().then(({data})=>{
@@ -399,8 +399,6 @@ export default function App(){
   },[user]);
 
   const go=t=>{setPrevPage(page);setPage(t)};
-
-
   const goToLogin=()=>go("login");const goToPaywall=()=>go("paywall");const goToAccount=()=>go("account");
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);setPage("profs")};
   const wrap=ch=><div style={{maxWidth:680,margin:"0 auto",padding:"0 16px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
