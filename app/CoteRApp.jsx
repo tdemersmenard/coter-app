@@ -272,20 +272,30 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
 
   const handleSubmit=async()=>{
     if(!profName.trim()||!course.trim()||!quality||!diff||!verdict||!review.trim()){setError("Remplis tous les champs.");return}
+    if(review.trim().length<20){setError("Ton avis doit contenir au moins 20 caractères.");return}
     setError("");setLoading(true);
     const formatted=formatName(profName);
     try{
+      // Rate limiting: max 5 reviews per 24h
+      const since=new Date(Date.now()-24*60*60*1000).toISOString();
+      const{count:recentCount,error:rcErr}=await supabase.from('reviews').select('*',{count:'exact',head:true}).eq('user_id',user.id).gte('created_at',since);
+      if(!rcErr&&recentCount>=5){setError("Limite atteinte : max 5 évaluations par 24h.");setLoading(false);return}
+
       let profId;
       const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===cegep);
       if(existing){profId=existing.id}else{
-        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:dept||"Autre",courses:[course.trim()]}).select().single();
+        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:dept||"Autre",courses:[course.trim().slice(0,100)]}).select().single();
         if(e)throw e;profId=data.id;
       }
-      const{error:re}=await supabase.from('reviews').insert({prof_id:profId,user_id:user.id,course:course.trim(),rating:parseInt(quality),difficulty:parseInt(diff),verdict,review_text:review.trim()});
+
+      // Duplicate check: 1 review per user per prof per course
+      const{count:dupCount,error:dcErr}=await supabase.from('reviews').select('*',{count:'exact',head:true}).eq('user_id',user.id).eq('prof_id',profId).eq('course',course.trim().slice(0,100));
+      if(!dcErr&&dupCount>0){setError("Tu as déjà évalué ce prof pour ce cours.");setLoading(false);return}
+
+      const{error:re}=await supabase.from('reviews').insert({prof_id:profId,user_id:user.id,course:course.trim().slice(0,100),rating:parseInt(quality),difficulty:parseInt(diff),verdict,review_text:review.trim().slice(0,2000)});
       if(re)throw re;
-      // Add course to prof if new
       if(existing&&!existing.courses?.includes(course.trim())){
-        await supabase.from('profs').update({courses:[...(existing.courses||[]),course.trim()]}).eq('id',profId);
+        await supabase.from('profs').update({courses:[...(existing.courses||[]),course.trim().slice(0,100)]}).eq('id',profId);
       }
       onSubmitted();setSubmitted(true);
     }catch(e){setError("Erreur: "+(e.message||"réessaie."));console.error(e)}
@@ -329,7 +339,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
           <button onClick={()=>setVerdict("keep")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="keep"?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",cursor:"pointer"}}>KEEP</button>
           <button onClick={()=>setVerdict("drop")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="drop"?"2px solid #E24B4A":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-danger)",color:"#E24B4A",cursor:"pointer"}}>DROP</button>
         </div></div>
-        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} value={review} onChange={e=>setReview(e.target.value)} style={{...inp,resize:"vertical",fontFamily:"inherit"}}/></div>
+        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} value={review} onChange={e=>setReview(e.target.value.slice(0,2000))} style={{...inp,resize:"vertical",fontFamily:"inherit"}}/><p style={{fontSize:11,color:review.length>1800?"#E24B4A":"var(--color-text-tertiary)",textAlign:"right",margin:"3px 0 0"}}>{review.length}/2000</p></div>
         <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",opacity:loading?0.8:1}}>{loading?"Envoi...":"Soumettre anonymement"}</button>
       </div>
     </div>
