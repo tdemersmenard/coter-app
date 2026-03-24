@@ -74,20 +74,41 @@ const lbl={fontSize:12,fontWeight:500,color:"var(--color-text-secondary)",displa
 // ============ NAV ============
 function Nav({page,setPage,user,goToLogin,goToAccount}){
   return(
-    <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:8,flexWrap:"wrap"}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
-        <span onClick={()=>setPage("profs")}><Logo size="sm"/></span>
-        <div style={{display:"flex",gap:2}}>
+    <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
+        <span onClick={()=>setPage("profs")} style={{flexShrink:0}}><Logo size="sm"/></span>
+        <div style={{display:"flex",gap:2,minWidth:0}}>
           {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
-            <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"5px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?500:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
+            <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?600:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
           ))}
         </div>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:6}}>
-        {user?<button onClick={goToAccount} style={{width:32,height:32,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:500,color:"var(--color-text-info)",border:page==="account"?"2px solid var(--color-border-info)":"2px solid transparent",cursor:"pointer",padding:0,flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
-        :<button onClick={goToLogin} style={{background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"5px 12px",fontSize:12,cursor:"pointer",color:"var(--color-text-secondary)",whiteSpace:"nowrap"}}>Connexion</button>}
+      <div style={{flexShrink:0}}>
+        {user
+          ?<button onClick={goToAccount} style={{width:34,height:34,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:600,color:"var(--color-text-info)",border:page==="account"?"2px solid #1D9E75":"2px solid transparent",cursor:"pointer",padding:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
+          :<button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Connexion</button>}
       </div>
     </nav>
+  );
+}
+
+// ============ WELCOME PAGE ============
+function WelcomePage({onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,3500);return()=>clearTimeout(t)},[]);
+  return(
+    <div style={{position:"fixed",inset:0,background:"var(--color-background-primary)",zIndex:1000,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{textAlign:"center",maxWidth:360}}>
+        <div style={{width:72,height:72,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:20}}>
+          <span style={{fontSize:32,color:"#1D9E75"}}>✓</span>
+        </div>
+        <h2 style={{fontSize:24,fontWeight:700,margin:"0 0 8px",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>Compte vérifié!</h2>
+        <p style={{fontSize:15,color:"var(--color-text-secondary)",margin:"0 0 28px",lineHeight:1.5}}>Bienvenue sur coteR. Tu es maintenant connecté.</p>
+        <div style={{display:"flex",gap:6,justifyContent:"center"}}>
+          {[0,1,2].map(i=><span key={i} style={{width:8,height:8,borderRadius:"50%",background:i===0?"#1D9E75":"var(--color-background-secondary)",display:"inline-block"}}/>)}
+        </div>
+        <p style={{fontSize:12,color:"var(--color-text-tertiary)",marginTop:16}}>Redirection automatique...</p>
+      </div>
+    </div>
   );
 }
 
@@ -127,42 +148,124 @@ function Landing({onStart}){
 }
 
 // ============ LOGIN PAGE ============
-function LoginPage({onClose}){
-  const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[isSignUp,setIsSignUp]=useState(false);
+function LoginPage({onClose,onVerified}){
+  const[mode,setMode]=useState("login"); // "login" | "signup" | "verify"
+  const[email,setEmail]=useState("");
+  const[password,setPassword]=useState("");
+  const[otp,setOtp]=useState(["","","","","",""]);
+  const[error,setError]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[resendCooldown,setResendCooldown]=useState(0);
   const[captchaToken,setCaptchaToken]=useState(null);
   const captchaRef=useRef(null);
+  const otpRefs=[useRef(),useRef(),useRef(),useRef(),useRef(),useRef()];
   const sitekey=process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY;
 
-  const reset=()=>{setCaptchaToken(null);captchaRef.current?.resetCaptcha()};
-  const handleSubmit=async()=>{
+  useEffect(()=>{
+    if(resendCooldown<=0)return;
+    const t=setTimeout(()=>setResendCooldown(r=>r-1),1000);
+    return()=>clearTimeout(t);
+  },[resendCooldown]);
+
+  const resetCaptcha=()=>{setCaptchaToken(null);captchaRef.current?.resetCaptcha()};
+
+  const handleAuth=async()=>{
     if(!email||!password){setError("Entre ton email et mot de passe.");return}
-    if(password.length<6){setError("Mot de passe: 6 caracteres minimum.");return}
-    if(isSignUp&&!isEmailAllowed(email)){setError("Ce domaine d'email n'est pas accepté. Utilise Gmail, Outlook, Yahoo, ou ton email scolaire (.qc.ca).");return}
-    if(!captchaToken){setError("Complète le captcha avant de continuer.");return}
+    if(password.length<6){setError("Mot de passe: 6 caractères minimum.");return}
+    if(mode==="signup"&&!isEmailAllowed(email)){setError("Domaine non accepté. Utilise Gmail, Outlook, Yahoo, ou ton email scolaire (.qc.ca).");return}
+    if(sitekey&&!captchaToken){setError("Complète le captcha avant de continuer.");return}
     setLoading(true);setError("");
-    if(isSignUp){
-      const{error:e}=await supabase.auth.signUp({email,password,options:{captchaToken}});
-      if(e){setError(e.message);setLoading(false);reset();return}
+    if(mode==="signup"){
+      const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
+      const{error:e}=await supabase.auth.signUp({email,password,...opts});
+      if(e){setError(e.message);setLoading(false);resetCaptcha();return}
+      setMode("verify");setResendCooldown(60);
     }else{
-      const{error:e}=await supabase.auth.signInWithPassword({email,password,options:{captchaToken}});
-      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);reset();return}
+      const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
+      const{error:e}=await supabase.auth.signInWithPassword({email,password,...opts});
+      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);resetCaptcha();return}
     }
     setLoading(false);
   };
+
+  const handleOtpChange=(i,val)=>{
+    if(!/^\d*$/.test(val))return;
+    const next=[...otp];next[i]=val.slice(-1);setOtp(next);
+    if(val&&i<5)otpRefs[i+1].current?.focus();
+  };
+  const handleOtpKey=(i,e)=>{
+    if(e.key==="Backspace"&&!otp[i]&&i>0)otpRefs[i-1].current?.focus();
+    if(e.key==="Enter")handleVerify();
+  };
+  const handleOtpPaste=(e)=>{
+    const digits=e.clipboardData.getData("text").replace(/\D/g,"").slice(0,6);
+    if(digits.length===6){e.preventDefault();setOtp(digits.split(""));otpRefs[5].current?.focus();}
+  };
+
+  const handleVerify=async()=>{
+    const token=otp.join("");
+    if(token.length<6){setError("Entre les 6 chiffres du code.");return}
+    setLoading(true);setError("");
+    const{error:e}=await supabase.auth.verifyOtp({email,token,type:"signup"});
+    if(e){setError("Code invalide ou expiré. Réessaie.");setLoading(false);return}
+    setLoading(false);
+    onVerified();
+  };
+
+  const handleResend=async()=>{
+    if(resendCooldown>0)return;
+    setError("");
+    await supabase.auth.resend({type:"signup",email});
+    setResendCooldown(60);
+  };
+
+  const card={background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"32px 28px",border:"0.5px solid var(--color-border-tertiary)",maxWidth:420,margin:"0 auto",width:"100%"};
+
+  if(mode==="verify")return(
+    <div style={{maxWidth:460,margin:"0 auto",padding:"40px 16px"}}>
+      <div style={card}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:16,fontSize:24}}>✉️</div>
+          <h2 style={{fontSize:20,fontWeight:600,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Vérifie ton email</h2>
+          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,lineHeight:1.5}}>On a envoyé un code à<br/><strong style={{color:"var(--color-text-primary)"}}>{email}</strong></p>
+        </div>
+        {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:16}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
+        <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:20}}>
+          {otp.map((d,i)=>(
+            <input key={i} ref={otpRefs[i]} type="text" inputMode="numeric" maxLength={1} value={d}
+              onChange={e=>handleOtpChange(i,e.target.value)}
+              onKeyDown={e=>handleOtpKey(i,e)}
+              onPaste={handleOtpPaste}
+              style={{width:44,height:52,textAlign:"center",fontSize:22,fontWeight:700,fontFamily:"'Space Mono',monospace",border:d?"1.5px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",outline:"none"}}/>
+          ))}
+        </div>
+        <button onClick={handleVerify} disabled={loading||otp.join("").length<6} style={{width:"100%",background:otp.join("").length<6?"var(--color-background-secondary)":"#1D9E75",color:otp.join("").length<6?"var(--color-text-tertiary)":"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:otp.join("").length<6?"default":"pointer",transition:"all 0.15s"}}>{loading?"Vérification...":"Confirmer le code"}</button>
+        <p style={{fontSize:12,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>
+          Pas reçu? <button onClick={handleResend} disabled={resendCooldown>0} style={{background:"none",border:"none",color:resendCooldown>0?"var(--color-text-tertiary)":"#1D9E75",cursor:resendCooldown>0?"default":"pointer",fontSize:12,fontWeight:500,padding:0}}>{resendCooldown>0?`Renvoyer (${resendCooldown}s)`:"Renvoyer le code"}</button>
+        </p>
+        <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"8px 0 0"}}>Ou clique sur le lien directement dans l'email.</p>
+      </div>
+    </div>
+  );
+
   return(
-    <div style={{maxWidth:460,margin:"0 auto",padding:"40px 0"}}>
-      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"28px 24px",border:"0.5px solid var(--color-border-tertiary)"}}>
-        <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>{isSignUp?"Creer un compte":"Connexion"}</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{isSignUp?"Gratuit, ca prend 10 secondes.":"Connecte-toi pour evaluer tes profs."}</p></div>
+    <div style={{maxWidth:460,margin:"0 auto",padding:"40px 16px"}}>
+      <div style={card}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <Logo size="sm"/>
+          <h2 style={{fontSize:20,fontWeight:600,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>{mode==="signup"?"Créer un compte":"Connexion"}</h2>
+          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{mode==="signup"?"Gratuit — 10 secondes.":"Content de te revoir."}</p>
+        </div>
         {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <input type="email" placeholder="ton@email.com" autoComplete="off" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
-          <input type="password" placeholder="Mot de passe (6+ caracteres)" autoComplete="off" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{...inp}}/>
-          {sitekey&&<div style={{display:"flex",justifyContent:"center",margin:"4px 0"}}><HCaptcha ref={captchaRef} sitekey={sitekey} onVerify={token=>setCaptchaToken(token)} onExpire={reset} theme="auto"/></div>}
-          <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer"}}>{loading?"...":(isSignUp?"Creer mon compte":"Se connecter")}</button>
+          <input type="password" placeholder="Mot de passe (6+ caractères)" autoComplete="off" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleAuth()}} style={{...inp}}/>
+          {sitekey&&<div style={{display:"flex",justifyContent:"center",margin:"4px 0"}}><HCaptcha ref={captchaRef} sitekey={sitekey} onVerify={t=>setCaptchaToken(t)} onExpire={resetCaptcha} theme="auto"/></div>}
+          <button onClick={handleAuth} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",marginTop:2}}>{loading?"...":(mode==="signup"?"Créer mon compte":"Se connecter")}</button>
         </div>
-        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("");reset()}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
-        <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"12px 0 0"}}>Tes evaluations restent 100% anonymes.</p>
-        <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:12,padding:8}}>&larr; Retour</button>
+        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"18px 0 0"}}>{mode==="signup"?"Déjà un compte?":"Pas de compte?"} <button onClick={()=>{setMode(mode==="signup"?"login":"signup");setError("");resetCaptcha()}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{mode==="signup"?"Se connecter":"Créer un compte"}</button></p>
+        <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"10px 0 0"}}>Tes évaluations restent 100% anonymes.</p>
+        <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:14,padding:8}}>&larr; Retour</button>
       </div>
     </div>
   );
@@ -429,16 +532,29 @@ export default function App(){
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
   const[loading,setLoading]=useState(true);
   const[submitPrefill,setSubmitPrefill]=useState(null);
+  const[showWelcome,setShowWelcome]=useState(false);
   const afterLoginPage=useRef("profs");
 
+  const triggerWelcome=()=>{setShowWelcome(true);setPage("profs");try{localStorage.setItem("coter_page","profs")}catch{}};
+
   useEffect(()=>{
+    // Detect email confirmation via link (Supabase redirects with #type=signup)
+    if(typeof window!=="undefined"&&window.location.hash.includes("type=signup")){
+      window.history.replaceState({},"",window.location.pathname);
+      // Let onAuthStateChange handle the session, welcome shown after SIGNED_IN
+    }
     supabase.auth.getSession().then(({data:{session}})=>{
       if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
     });
     const{data:{subscription}}=supabase.auth.onAuthStateChange((ev,session)=>{
       if(session){
         setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
-        setPage(p=>{if(p==="login"){const dest=afterLoginPage.current;afterLoginPage.current="profs";return dest;}return p;});
+        if(ev==="SIGNED_IN"&&(window.location.hash.includes("type=signup")||window.location.hash.includes("access_token"))){
+          window.history.replaceState({},"",window.location.pathname);
+          triggerWelcome();
+        }else{
+          setPage(p=>{if(p==="login"){const dest=afterLoginPage.current;afterLoginPage.current="profs";return dest;}return p;});
+        }
       }else setUser(null);
     });
     return()=>subscription.unsubscribe();
@@ -473,7 +589,8 @@ export default function App(){
     {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate}/>}
     {page==="calc"&&<CalcPage/>}
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
-    {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)}/>}
+    {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/>}
+    {showWelcome&&<WelcomePage onDone={()=>setShowWelcome(false)}/>}
     {page==="account"&&<AccountPage user={user} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/>}
     <footer style={{marginTop:48,paddingTop:14,paddingBottom:24,borderTop:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
       <Logo size="sm"/><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>Fait par des étudiants, pour les étudiants.</p>
