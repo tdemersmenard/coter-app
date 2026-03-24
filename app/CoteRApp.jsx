@@ -53,7 +53,7 @@ const inp={width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(
 const lbl={fontSize:12,fontWeight:500,color:"var(--color-text-secondary)",display:"block",marginBottom:5};
 
 // ============ NAV ============
-function Nav({page,setPage,isPro,goToPaywall,user,goToLogin,goToAccount}){
+function Nav({page,setPage,user,goToLogin,goToAccount}){
   return(
     <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:8,flexWrap:"wrap"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
@@ -65,8 +65,6 @@ function Nav({page,setPage,isPro,goToPaywall,user,goToLogin,goToAccount}){
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:6}}>
-        {!isPro?<button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"5px 12px",fontSize:12,fontWeight:500,cursor:"pointer"}}>PRO</button>
-        :<span style={{display:"inline-flex",alignItems:"center",gap:4,background:"var(--color-background-success)",borderRadius:"var(--border-radius-md)",padding:"4px 8px"}}><span style={{width:5,height:5,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/><span style={{fontSize:11,color:"#1D9E75",fontWeight:500}}>PRO</span></span>}
         {user?<button onClick={goToAccount} style={{width:32,height:32,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:500,color:"var(--color-text-info)",border:page==="account"?"2px solid var(--color-border-info)":"2px solid transparent",cursor:"pointer",padding:0,flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
         :<button onClick={goToLogin} style={{background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"5px 12px",fontSize:12,cursor:"pointer",color:"var(--color-text-secondary)",whiteSpace:"nowrap"}}>Connexion</button>}
       </div>
@@ -75,21 +73,14 @@ function Nav({page,setPage,isPro,goToPaywall,user,goToLogin,goToAccount}){
 }
 
 // ============ ACCOUNT PAGE ============
-function AccountPage({user,isPro,goToPaywall,onLogout,onBack}){
+function AccountPage({user,onLogout,onBack}){
   return(
     <div style={{maxWidth:520,margin:"0 auto",padding:"24px 0"}}>
       <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"0 0 16px"}}>&larr; Retour</button>
       <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",border:"0.5px solid var(--color-border-tertiary)",padding:"28px 24px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
           <div style={{width:52,height:52,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"var(--color-text-info)",flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</div>
           <div style={{minWidth:0}}><p style={{fontSize:18,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name||"Utilisateur"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,overflow:"hidden",textOverflow:"ellipsis"}}>{(e=>{const[l,d]=e.split("@");return l.slice(0,3)+"***@***."+(d?.split(".").pop()||"com")})(user.email||"")}</p></div>
-        </div>
-        <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"16px",marginBottom:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><p style={{fontSize:14,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)"}}>Abonnement</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0}}>{isPro?"CoteR PRO — actif":"Gratuit"}</p></div>
-            {isPro?<span style={{fontSize:11,padding:"3px 10px",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",fontWeight:500}}>Actif</span>
-            :<button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:12,fontWeight:500,cursor:"pointer"}}>Passer à PRO</button>}
-          </div>
         </div>
         <button onClick={onLogout} style={{width:"100%",background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"11px",fontSize:14,cursor:"pointer",color:"var(--color-text-danger)"}}>Se déconnecter</button>
       </div>
@@ -209,7 +200,7 @@ function ReviewCard({r}){const c=rc(r.rating);return(
 )}
 
 // ============ PROF DETAIL ============
-function ProfDetail({prof,reviews,isPro,goToPaywall,onBack,onEvaluate}){
+function ProfDetail({prof,reviews,onBack,onEvaluate}){
   const rating=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length*10)/10:0;
   const diff=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.difficulty,0)/reviews.length*10)/10:0;
   const keepPct=reviews.length?Math.round(100*reviews.filter(r=>r.verdict==="keep").length/reviews.length):0;
@@ -229,28 +220,14 @@ function ProfDetail({prof,reviews,isPro,goToPaywall,onBack,onEvaluate}){
         {reviews.length>0&&<div style={{textAlign:"center",flexShrink:0}}><p style={{fontSize:34,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(rating)}}>{rating}</p><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>/5</p></div>}
       </div>
       {reviews.length>0&&<>
-        {isPro?<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
           {[{l:"Reprendrait",v:`${keepPct}%`,c:keepPct>=70?"#1D9E75":keepPct>=50?"#EF9F27":"#E24B4A"},{l:"Difficulté",v:`${diff}/5`,c:"var(--color-text-primary)"},{l:"Avis",v:reviews.length,c:"var(--color-text-primary)"}].map((s,i)=>(
             <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>{s.l}</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:s.c}}>{s.v}</p></div>
           ))}
         </div>
-        :<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
-          <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>Reprendrait</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:"var(--color-text-tertiary)",filter:"blur(4px)"}}>??%</p></div>
-          <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>Difficulté</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:"var(--color-text-tertiary)",filter:"blur(4px)"}}>?/5</p></div>
-          <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>Avis</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:"var(--color-text-primary)"}}>{reviews.length}</p></div>
-        </div>}
         <h2 style={{fontSize:15,fontWeight:500,margin:"0 0 12px",color:"var(--color-text-primary)"}}>Avis ({reviews.length})</h2>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {isPro?reviews.map((r,i)=><ReviewCard key={i} r={r}/>):(
-            <div style={{position:"relative"}}>
-              <div style={{filter:"blur(6px)",userSelect:"none",pointerEvents:"none"}}>{reviews.slice(0,3).map((r,i)=><ReviewCard key={i} r={r}/>)}</div>
-              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
-                <p style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",margin:0}}>{reviews.length} avis disponible{reviews.length>1?"s":""}</p>
-                <p style={{fontSize:12,color:"var(--color-text-secondary)",margin:"0 0 4px"}}>Abonne-toi pour lire les avis</p>
-                <button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Debloquer PRO — 9,99$/session</button>
-              </div>
-            </div>
-          )}
+          {reviews.map((r,i)=><ReviewCard key={i} r={r}/>)}
         </div>
       </>}
       {reviews.length===0&&<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:14,color:"var(--color-text-tertiary)",margin:0}}>Aucun avis encore pour ce prof.</p></div>}
@@ -259,9 +236,9 @@ function ProfDetail({prof,reviews,isPro,goToPaywall,onBack,onEvaluate}){
 }
 
 // ============ PROFS PAGE (reads from Supabase) ============
-function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
+function ProfsPage({profs,reviewsByProf,onEvaluate}){
   const[search,setSearch]=useState("");const[cegep,setCegep]=useState("Cégep de Granby");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
-  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} isPro={isPro} goToPaywall={goToPaywall} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
+  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} onBack={()=>setSel(null)} onEvaluate={onEvaluate}/>}
   const q=norm(search.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
   let list=q.length>=1?profsWithStats.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithStats.filter(p=>p.cegep===cegep);
@@ -429,13 +406,12 @@ function CalcPage(){
 // ============ MAIN APP ============
 export default function App(){
   const[page,setPage]=useState(()=>{try{const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
-  const[isPro,setIsPro]=useState(true);const[user,setUser]=useState(null);
+  const[user,setUser]=useState(null);
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});
   const[loading,setLoading]=useState(true);
   const[submitPrefill,setSubmitPrefill]=useState(null);
   const afterLoginPage=useRef("profs");
 
-  // Load auth state
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{
       if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
@@ -449,18 +425,6 @@ export default function App(){
     return()=>subscription.unsubscribe();
   },[]);
 
-  // Check for Stripe success redirect
-  useEffect(()=>{
-    if(typeof window!=="undefined"&&user){
-      const params=new URLSearchParams(window.location.search);
-      if(params.get("pro")==="success"){
-        supabase.from('pro_users').upsert({user_id:user.id}).then(()=>{setIsPro(true)});
-        window.history.replaceState({},"","/");
-      }
-    }
-  },[user]);
-
-  // Load profs and reviews from Supabase
   const loadData=async()=>{
     setLoading(true);
     const{data:profsData}=await supabase.from('profs').select('*').order('name');
@@ -475,33 +439,23 @@ export default function App(){
   };
   useEffect(()=>{loadData()},[]);
 
-  // Check pro status on login
-  useEffect(()=>{
-    if(user){
-      supabase.from('pro_users').select('user_id').eq('user_id',user.id).single().then(({data})=>{
-        if(data)setIsPro(true);
-      });
-    }
-  },[user]);
-
   const go=t=>{setPrevPage(page);setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
-  const goToLogin=()=>go("login");const goToPaywall=()=>go("paywall");const goToAccount=()=>go("account");
+  const goToLogin=()=>go("login");const goToAccount=()=>go("account");
   const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
   const navTo=t=>{setPage(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
-  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);setIsPro(false);navTo("profs")};
+  const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);navTo("profs")};
   const wrap=ch=><div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
   if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")}/>);
 
   return wrap(<>
-    {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} isPro={isPro} goToPaywall={goToPaywall} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
+    {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
     {loading&&page==="profs"&&<div style={{textAlign:"center",padding:"60px 0"}}><p style={{color:"var(--color-text-tertiary)"}}>Chargement...</p></div>}
-    {!loading&&page==="profs"&&<ProfsPage isPro={isPro} goToPaywall={goToPaywall} profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate}/>}
+    {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate}/>}
     {page==="calc"&&<CalcPage/>}
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
     {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)}/>}
-    {page==="paywall"&&<StripePage onClose={()=>setPage(prevPage)} user={user} isPro={isPro} openLogin={()=>{setPrevPage("paywall");setPage("login")}}/>}
-    {page==="account"&&<AccountPage user={user} isPro={isPro} goToPaywall={goToPaywall} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/>}
+    {page==="account"&&<AccountPage user={user} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/>}
     <footer style={{marginTop:48,paddingTop:14,paddingBottom:24,borderTop:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
       <Logo size="sm"/><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>Fait par des étudiants, pour les étudiants.</p>
     </footer>
