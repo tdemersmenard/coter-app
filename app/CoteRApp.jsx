@@ -239,7 +239,7 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
             <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{q.length>=2?` — ${p.cegep}`:""}</p></div>
             <div style={{display:"flex",alignItems:"start",gap:8,flexShrink:0}}>
-              <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
+              <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 14px",fontSize:12,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
               {p.totalReviews>0&&<div style={{textAlign:"right"}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
             </div>
           </div>
@@ -255,7 +255,7 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
 
 // ============ SUBMIT PAGE (writes to Supabase) ============
 function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
-  const[cegep,setCegep]=useState(prefill?.cegep||"Cégep de Granby");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
+  const[cegep,setCegep]=useState(prefill?.cegep||"Cégep de Granby");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[customCourse,setCustomCourse]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
 
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
   if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
@@ -265,8 +265,9 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   const allCourses=[...new Set(profs.filter(p=>p.cegep===cegep).flatMap(p=>p.courses||[]))].sort();
   const cq=course.trim().toLowerCase();
   const courseSuggestions=cq.length>=2?allCourses.filter(c=>c.toLowerCase().includes(cq)).slice(0,5):[];
-  const selectProf=p=>{setProfName(p.name);setDept(p.dept||"");setShowProfSug(false)};
+  const selectProf=p=>{setProfName(p.name);setDept(p.dept||"");setCourse("");setCustomCourse(false);setShowProfSug(false)};
   const existingMatch=pq.length>=3?profs.find(p=>p.name.toLowerCase()===formatName(profName).toLowerCase()&&p.cegep===cegep):null;
+  const profCourses=existingMatch?.courses||[];
 
   const handleSubmit=async()=>{
     if(!profName.trim()||!course.trim()||!quality||!diff||!verdict||!review.trim()){setError("Remplis tous les champs.");return}
@@ -304,9 +305,20 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
           {existingMatch&&<div style={{marginTop:6,background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"8px 10px"}}><p style={{fontSize:12,color:"var(--color-text-info)",margin:0}}>Ce prof existe — ton avis sera ajouté à son profil.</p></div>}
         </div>
         <div><label style={lbl}>Département</label><select value={dept} onChange={e=>setDept(e.target.value)} style={{...inp,appearance:"auto"}}><option value="">Choisir...</option>{DEPTS.map(d=><option key={d}>{d}</option>)}</select></div>
-        <div style={{position:"relative"}}><label style={lbl}>Cours</label>
-          <input type="text" placeholder="ex: Méthodes quantitatives" value={course} onChange={e=>{setCourse(e.target.value);setShowCourseSug(true)}} onFocus={()=>setShowCourseSug(true)} onBlur={()=>setTimeout(()=>setShowCourseSug(false),200)} style={inp}/>
-          {showCourseSug&&courseSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{courseSuggestions.map((c,i)=><button key={c} onMouseDown={()=>{setCourse(c);setShowCourseSug(false)}} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",fontSize:14,color:"var(--color-text-primary)",borderBottom:i<courseSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>{c}</button>)}</div>}
+        <div><label style={lbl}>Cours</label>
+          {profCourses.length>0&&!customCourse?(
+            <select value={course} onChange={e=>{if(e.target.value==="__custom__"){setCustomCourse(true);setCourse("")}else setCourse(e.target.value)}} style={{...inp,appearance:"auto"}}>
+              <option value="">Choisir un cours...</option>
+              {profCourses.map(c=><option key={c} value={c}>{c}</option>)}
+              <option value="__custom__">+ Ajouter un autre cours...</option>
+            </select>
+          ):(
+            <div style={{position:"relative"}}>
+              {profCourses.length>0&&<button type="button" onClick={()=>{setCustomCourse(false);setCourse("")}} style={{background:"none",border:"none",fontSize:11,color:"#1D9E75",cursor:"pointer",padding:"0 0 5px",display:"block"}}>&larr; Choisir parmi les cours existants</button>}
+              <input type="text" placeholder="ex: Méthodes quantitatives" value={course} onChange={e=>{setCourse(e.target.value);setShowCourseSug(true)}} onFocus={()=>setShowCourseSug(true)} onBlur={()=>setTimeout(()=>setShowCourseSug(false),200)} style={inp}/>
+              {showCourseSug&&courseSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{courseSuggestions.map((c,i)=><button key={c} onMouseDown={()=>{setCourse(c);setShowCourseSug(false)}} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",fontSize:14,color:"var(--color-text-primary)",borderBottom:i<courseSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>{c}</button>)}</div>}
+            </div>
+          )}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div><label style={lbl}>Qualité</label><div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setQuality(String(n))} style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:quality===String(n)?700:400,border:quality===String(n)?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:quality===String(n)?"var(--color-background-success)":"var(--color-background-primary)",color:quality===String(n)?"#1D9E75":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>)}</div></div>
