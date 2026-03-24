@@ -81,7 +81,7 @@ function Landing({onStart}){
   );
 }
 
-// ============ LOGIN PAGE (real Google auth) ============
+// ============ LOGIN PAGE ============
 function LoginPage({onClose}){
   const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[isSignUp,setIsSignUp]=useState(false);
   const handleSubmit=async()=>{
@@ -103,8 +103,8 @@ function LoginPage({onClose}){
         <div style={{textAlign:"center",marginBottom:24}}><Logo size="sm"/><h2 style={{fontSize:20,fontWeight:500,margin:"12px 0 4px",color:"var(--color-text-primary)"}}>{isSignUp?"Creer un compte":"Connexion"}</h2><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{isSignUp?"Gratuit, ca prend 10 secondes.":"Connecte-toi pour evaluer tes profs."}</p></div>
         {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"}}/>
-          <input type="password" placeholder="Mot de passe (6+ caracteres)" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"}}/>
+          <input type="email" placeholder="ton@email.com" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
+          <input type="password" placeholder="Mot de passe (6+ caracteres)" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{...inp}}/>
           <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer"}}>{loading?"...":(isSignUp?"Creer mon compte":"Se connecter")}</button>
         </div>
         <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("")}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
@@ -183,16 +183,27 @@ function ProfDetail({prof,reviews,isPro,goToPaywall,onBack}){
         {reviews.length>0&&<div style={{textAlign:"center",flexShrink:0}}><p style={{fontSize:34,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(rating)}}>{rating}</p><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>/5</p></div>}
       </div>
       {reviews.length>0&&<>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
+        {isPro?<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
           {[{l:"Reprendrait",v:`${keepPct}%`,c:keepPct>=70?"#1D9E75":keepPct>=50?"#EF9F27":"#E24B4A"},{l:"Difficulté",v:`${diff}/5`,c:"var(--color-text-primary)"},{l:"Avis",v:reviews.length,c:"var(--color-text-primary)"}].map((s,i)=>(
             <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>{s.l}</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:s.c}}>{s.v}</p></div>
           ))}
         </div>
+        :<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
+          <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>Reprendrait</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:"var(--color-text-tertiary)",filter:"blur(4px)"}}>??%</p></div>
+          <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>Difficulté</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:"var(--color-text-tertiary)",filter:"blur(4px)"}}>?/5</p></div>
+          <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>Avis</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:"var(--color-text-primary)"}}>{reviews.length}</p></div>
+        </div>}
         <h2 style={{fontSize:15,fontWeight:500,margin:"0 0 12px",color:"var(--color-text-primary)"}}>Avis ({reviews.length})</h2>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <ReviewCard r={reviews[0]}/>
-          {isPro?reviews.slice(1).map((r,i)=><ReviewCard key={i} r={r}/>):reviews.length>1&&(
-            <div style={{position:"relative"}}><div style={{filter:"blur(6px)",userSelect:"none",pointerEvents:"none"}}>{reviews.slice(1,3).map((r,i)=><ReviewCard key={i} r={r}/>)}</div><div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}><p style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",margin:0}}>+{reviews.length-1} avis</p><button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"9px 22px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Débloquer — 9,99$/session</button></div></div>
+          {isPro?reviews.map((r,i)=><ReviewCard key={i} r={r}/>):(
+            <div style={{position:"relative"}}>
+              <div style={{filter:"blur(6px)",userSelect:"none",pointerEvents:"none"}}>{reviews.slice(0,3).map((r,i)=><ReviewCard key={i} r={r}/>)}</div>
+              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6}}>
+                <p style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",margin:0}}>{reviews.length} avis disponible{reviews.length>1?"s":""}</p>
+                <p style={{fontSize:12,color:"var(--color-text-secondary)",margin:"0 0 4px"}}>Abonne-toi pour lire les avis</p>
+                <button onClick={goToPaywall} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Debloquer PRO — 9,99$/session</button>
+              </div>
+            </div>
           )}
         </div>
       </>}
@@ -344,8 +355,10 @@ export default function App(){
       if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
     });
     const{data:{subscription}}=supabase.auth.onAuthStateChange((ev,session)=>{
-      if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
-      else setUser(null);
+      if(session){
+        setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
+        setPage(p=>p==="login"?"profs":p);
+      }else setUser(null);
     });
     return()=>subscription.unsubscribe();
   },[]);
