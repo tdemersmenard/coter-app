@@ -239,7 +239,7 @@ function ProfsPage({isPro,goToPaywall,profs,reviewsByProf,onEvaluate}){
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
             <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{q.length>=2?` — ${p.cegep}`:""}</p></div>
             <div style={{display:"flex",alignItems:"start",gap:8,flexShrink:0}}>
-              <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"var(--color-background-success)",color:"#1D9E75",border:"none",borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
+              <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
               {p.totalReviews>0&&<div style={{textAlign:"right"}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
             </div>
           </div>
