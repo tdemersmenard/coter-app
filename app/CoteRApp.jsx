@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 const ALLOWED_EMAIL_DOMAINS = new Set([
   // Google
@@ -118,17 +119,23 @@ function Landing({onStart}){
 // ============ LOGIN PAGE ============
 function LoginPage({onClose}){
   const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[isSignUp,setIsSignUp]=useState(false);
+  const[captchaToken,setCaptchaToken]=useState(null);
+  const captchaRef=useRef(null);
+  const sitekey=process.env.NEXT_PUBLIC_HCAPTCHA_SITEKEY;
+
+  const reset=()=>{setCaptchaToken(null);captchaRef.current?.resetCaptcha()};
   const handleSubmit=async()=>{
     if(!email||!password){setError("Entre ton email et mot de passe.");return}
     if(password.length<6){setError("Mot de passe: 6 caracteres minimum.");return}
     if(isSignUp&&!isEmailAllowed(email)){setError("Ce domaine d'email n'est pas accepté. Utilise Gmail, Outlook, Yahoo, ou ton email scolaire (.qc.ca).");return}
+    if(!captchaToken){setError("Complète le captcha avant de continuer.");return}
     setLoading(true);setError("");
     if(isSignUp){
-      const{error:e}=await supabase.auth.signUp({email,password});
-      if(e){setError(e.message);setLoading(false);return}
+      const{error:e}=await supabase.auth.signUp({email,password,options:{captchaToken}});
+      if(e){setError(e.message);setLoading(false);reset();return}
     }else{
-      const{error:e}=await supabase.auth.signInWithPassword({email,password});
-      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);return}
+      const{error:e}=await supabase.auth.signInWithPassword({email,password,options:{captchaToken}});
+      if(e){setError("Email ou mot de passe incorrect.");setLoading(false);reset();return}
     }
     setLoading(false);
   };
@@ -140,9 +147,10 @@ function LoginPage({onClose}){
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <input type="email" placeholder="ton@email.com" autoComplete="off" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
           <input type="password" placeholder="Mot de passe (6+ caracteres)" autoComplete="off" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleSubmit()}} style={{...inp}}/>
+          {sitekey&&<div style={{display:"flex",justifyContent:"center",margin:"4px 0"}}><HCaptcha ref={captchaRef} sitekey={sitekey} onVerify={token=>setCaptchaToken(token)} onExpire={reset} theme="auto"/></div>}
           <button onClick={handleSubmit} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"12px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer"}}>{loading?"...":(isSignUp?"Creer mon compte":"Se connecter")}</button>
         </div>
-        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("")}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
+        <p style={{fontSize:13,color:"var(--color-text-secondary)",textAlign:"center",margin:"16px 0 0"}}>{isSignUp?"Deja un compte?":"Pas de compte?"} <button onClick={()=>{setIsSignUp(!isSignUp);setError("");reset()}} style={{background:"none",border:"none",color:"#1D9E75",cursor:"pointer",fontWeight:500,fontSize:13,padding:0}}>{isSignUp?"Se connecter":"Creer un compte"}</button></p>
         <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"12px 0 0"}}>Tes evaluations restent 100% anonymes.</p>
         <button onClick={onClose} style={{width:"100%",background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",marginTop:12,padding:8}}>&larr; Retour</button>
       </div>
