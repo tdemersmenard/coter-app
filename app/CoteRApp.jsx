@@ -179,7 +179,9 @@ function LoginPage({onClose,onVerified}){
       const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
       const{data:signUpData,error:e}=await supabase.auth.signUp({email,password,...opts});
       if(e){setError(e.message);setLoading(false);resetCaptcha();return}
-      if(signUpData?.user?.identities?.length===0){setError("Un compte existe déjà avec cet email. Connecte-toi.");setLoading(false);resetCaptcha();return}
+      const u=signUpData?.user;
+      const emailExists=(u?.identities?.length===0)||(u?.email_confirmed_at!=null);
+      if(emailExists){setError("Un compte existe déjà avec cet email. Connecte-toi.");setLoading(false);resetCaptcha();return}
       setMode("verify");setResendCooldown(60);
     }else{
       const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
