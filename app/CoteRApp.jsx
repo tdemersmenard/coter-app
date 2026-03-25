@@ -759,16 +759,19 @@ export default function App(){
 
   const loadData=async()=>{
     setLoading(true);
-    const[{data:profsData},{data:reviewsData},{data:likesData},{data:userCountData}]=await Promise.all([
+    const[{data:profsData},{data:reviewsData},{data:likesData}]=await Promise.all([
       supabase.from('profs').select('*').order('name'),
       supabase.from('reviews').select('*').order('created_at',{ascending:false}),
       supabase.from('review_likes').select('review_id,user_id'),
-      supabase.rpc('get_user_count').catch(()=>({data:null})),
     ]);
     if(profsData)setProfs(profsData);
-    if(reviewsData){const grouped={};reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});setReviewsByProf(grouped);}
+    if(reviewsData){
+      const grouped={};
+      reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});
+      setReviewsByProf(grouped);
+      setTotalUsers(new Set(reviewsData.map(r=>r.user_id).filter(Boolean)).size);
+    }
     if(likesData)setAllLikes(likesData);
-    if(userCountData!=null)setTotalUsers(userCountData);
     setLoading(false);
   };
   useEffect(()=>{loadData()},[]);
