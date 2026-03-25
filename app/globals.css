@@ -76,6 +76,10 @@ input:focus, select:focus, textarea:focus {
 .page-enter { animation: fadeUp 0.18s ease-out both; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
 .spinner {
   display: inline-block;
   width: 18px; height: 18px;

@@ -108,7 +108,6 @@ function Skeleton(){
 function MobileNav({page,setPage,user,goToLogin,goToAccount}){
   const items=[
     {id:"profs",icon:"⊞",l:"Profs"},
-    {id:"classement",icon:"★",l:"Top"},
     {id:"calc",icon:"∑",l:"Cote R"},
     {id:"submit",icon:"✏",l:"Évaluer"},
     {id:user?"account":"login",icon:user?"◎":"→",l:user?"Compte":"Connexion"},
@@ -130,16 +129,20 @@ function MobileNav({page,setPage,user,goToLogin,goToAccount}){
 }
 
 // ============ NAV ============
-function Nav({page,setPage,user,goToLogin,goToAccount}){
+function Nav({page,setPage,user,goToLogin,goToAccount,onlineCount}){
   return(
     <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:10}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
         <span onClick={()=>setPage("landing")} style={{flexShrink:0,cursor:"pointer"}}><Logo size="sm"/></span>
         <div style={{display:"flex",gap:2,minWidth:0}}>
-          {[{id:"profs",l:"Profs"},{id:"classement",l:"Top"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
+          {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
             <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?600:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
           ))}
         </div>
+        {onlineCount>0&&<div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 9px",borderRadius:20,background:"var(--color-background-success)",flexShrink:0}}>
+          <span style={{width:6,height:6,borderRadius:"50%",background:"#1D9E75",display:"inline-block",animation:"pulse 2s infinite"}}/>
+          <span style={{fontSize:11,color:"#1D9E75",fontWeight:500,whiteSpace:"nowrap"}}>{onlineCount} en ligne</span>
+        </div>}
       </div>
       <div style={{flexShrink:0}}>
         {user
@@ -187,12 +190,14 @@ function AccountPage({user,onLogout,onBack}){
 }
 
 // ============ LANDING ============
-function Landing({onStart,onLogin,totalProfs,totalReviews}){
+function Landing({onStart,onLogin,onAccount,user,totalProfs,totalReviews}){
   return(
     <div className="page-enter">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:0}}>
         <Logo size="sm"/>
-        <button onClick={onLogin} style={{background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)"}}>Connexion</button>
+        {user
+          ?<button onClick={onAccount} style={{width:34,height:34,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:600,color:"var(--color-text-info)",border:"2px solid transparent",cursor:"pointer",padding:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
+          :<button onClick={onLogin} style={{background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)"}}>Connexion</button>}
       </div>
       <div style={{minHeight:"80vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"2rem 0.5rem"}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--color-background-success)",borderRadius:20,padding:"4px 14px",marginBottom:18,fontSize:12,color:"#1D9E75",fontWeight:500}}><span style={{width:6,height:6,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/>100% anonyme · 100% gratuit</div>
@@ -712,6 +717,7 @@ function syncHash(t){try{const h=PAGE_HASH[t]??'';window.history.pushState({page
 export default function App(){
   const[page,setPage]=useState(()=>{try{const hash=window.location.hash.replace('#','');if(hash&&!hash.includes('=')&&HASH_PAGE[hash])return HASH_PAGE[hash];const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
   const[user,setUser]=useState(null);
+  const[onlineCount,setOnlineCount]=useState(0);
   const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});const[allLikes,setAllLikes]=useState([]);
   const[loading,setLoading]=useState(true);
   const[submitPrefill,setSubmitPrefill]=useState(null);
@@ -741,6 +747,14 @@ export default function App(){
       }else setUser(null);
     });
     return()=>subscription.unsubscribe();
+  },[]);
+
+  useEffect(()=>{
+    const id=Math.random().toString(36).slice(2);
+    const ch=supabase.channel('room:online',{config:{presence:{key:id}}});
+    ch.on('presence',{event:'sync'},()=>setOnlineCount(Object.keys(ch.presenceState()).length))
+      .subscribe(async s=>{if(s==='SUBSCRIBED')await ch.track({t:Date.now()})});
+    return()=>{supabase.removeChannel(ch)};
   },[]);
 
   const loadData=async()=>{
@@ -788,10 +802,10 @@ export default function App(){
   const totalProfs=profs.length;
   const totalReviews=Object.values(reviewsByProf).reduce((s,arr)=>s+arr.length,0);
 
-  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")} onLogin={goToLogin} totalProfs={totalProfs} totalReviews={totalReviews}/>);
+  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")} onLogin={goToLogin} onAccount={goToAccount} user={user} totalProfs={totalProfs} totalReviews={totalReviews}/>);
 
   return wrap(<>
-    {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
+    {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount} onlineCount={onlineCount}/>}
     {loading&&page==="profs"&&<Skeleton/>}
     {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
     {page==="classement"&&<RankingPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
