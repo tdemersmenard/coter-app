@@ -74,6 +74,25 @@ const rc=v=>v>=4?"#1D9E75":v>=3?"#EF9F27":"#E24B4A";
 const inp={width:"100%",padding:"10px 12px",fontSize:14,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box"};
 const lbl={fontSize:12,fontWeight:500,color:"var(--color-text-secondary)",display:"block",marginBottom:5};
 
+// ============ CEGEP PICKER ============
+function CegepPicker({value,onChange,style}){
+  const[open,setOpen]=useState(false);
+  const q=norm(value||"");
+  const suggestions=q.length>=1?CEGEPS.filter(c=>norm(c).includes(q)).slice(0,9):[];
+  return(
+    <div style={{position:"relative",...(style||{})}}>
+      <input type="text" autoComplete="off" placeholder="Chercher un cégep..." value={value||""}
+        onChange={e=>{onChange(e.target.value);setOpen(true)}}
+        onFocus={()=>setOpen(true)}
+        onBlur={()=>setTimeout(()=>setOpen(false),200)}
+        style={inp}/>
+      {open&&suggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,maxHeight:220,overflowY:"auto",boxShadow:"0 4px 14px rgba(0,0,0,0.1)"}}>
+        {suggestions.map((c,i)=><button key={c} onMouseDown={()=>{onChange(c);setOpen(false)}} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"9px 12px",cursor:"pointer",fontSize:13,color:"var(--color-text-primary)",borderBottom:i<suggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none",display:"block"}}>{c}</button>)}
+      </div>}
+    </div>
+  );
+}
+
 // ============ NAV ============
 function Nav({page,setPage,user,goToLogin,goToAccount}){
   return(
@@ -370,28 +389,30 @@ function ProfDetail({prof,reviews,onBack,onEvaluate,likesByReview,userLikes,onLi
 
 // ============ PROFS PAGE (reads from Supabase) ============
 function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLike}){
-  const[search,setSearch]=useState("");const[cegep,setCegep]=useState("Cégep de Granby");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
+  const[search,setSearch]=useState("");const[cegep,setCegep]=useState("");const[sel,setSel]=useState(null);const[sort,setSort]=useState("rating");
   if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} onBack={()=>setSel(null)} onEvaluate={onEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={onLike}/>}
   const q=norm(search.trim());
+  const cq=norm(cegep.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
   const profsWithReviews=profsWithStats.filter(p=>p.totalReviews>0);
-  let list=q.length>=1?profsWithReviews.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):profsWithReviews.filter(p=>p.cegep===cegep);
+  let list=q.length>=1?profsWithReviews.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):cq.length>=1?profsWithReviews.filter(p=>norm(p.cegep).includes(cq)):[];
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
+  const showCegepCol=q.length>=1||(cq.length>=1&&CEGEPS.filter(c=>norm(c).includes(cq)).length>1);
   return(
     <div style={{maxWidth:720,margin:"0 auto"}}>
       <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Rating des profs</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 14px"}}>Drop ou keep? Check avant de t'inscrire.</p>
-      <input type="text" placeholder="Chercher un prof ou cours (tous cégeps)..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:12}}/>
-      {q.length<2&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
-        <select value={cegep} onChange={e=>setCegep(e.target.value)} style={{...inp,width:"auto",flex:"1 1 180px",maxWidth:"100%",appearance:"auto",padding:"6px 8px",fontSize:12}}>{CEGEPS.map(c=><option key={c} value={c}>{c}</option>)}</select>
+      <input type="text" placeholder="Chercher un prof ou cours (tous cégeps)..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:8}}/>
+      {q.length<1&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
+        <CegepPicker value={cegep} onChange={setCegep} style={{flex:"1 1 180px"}}/>
         <div style={{display:"flex",gap:3}}>{[{id:"rating",l:"Meilleur"},{id:"difficulty",l:"Facile"}].map(s=>(<button key={s.id} onClick={()=>setSort(s.id)} style={{background:sort===s.id?"var(--color-background-secondary)":"transparent",border:"0.5px solid "+(sort===s.id?"var(--color-border-secondary)":"transparent"),borderRadius:"var(--border-radius-md)",padding:"4px 9px",fontSize:11,cursor:"pointer",color:sort===s.id?"var(--color-text-primary)":"var(--color-text-secondary)"}}>{s.l}</button>))}</div>
       </div>}
-      {q.length>=2&&<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 12px"}}>{list.length} résultat{list.length!==1?"s":""}</p>}
-      {list.length===0?<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:15,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{q?"Aucun résultat":"Aucun prof ici encore"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>Sois le premier — clique "Évaluer"!</p></div>
+      {q.length>=1&&<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 12px"}}>{list.length} résultat{list.length!==1?"s":""}</p>}
+      {list.length===0?<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:15,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{q||cq?"Aucun résultat":"Cherche ton cégep ou un prof"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{q||cq?"Sois le premier — clique \"Évaluer\"!":"Tape le nom de ton établissement dans le champ ci-dessus."}</p></div>
       :<div style={{display:"flex",flexDirection:"column",gap:9}}>{list.map(p=>(
         <div key={p.id} onClick={()=>setSel(p)} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--color-border-secondary)"} onMouseLeave={e=>e.currentTarget.style.borderColor="var(--color-border-tertiary)"}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
-            <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{q.length>=2?` — ${p.cegep}`:""}</p></div>
+            <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{showCegepCol?` — ${p.cegep}`:""}</p></div>
             <div style={{display:"flex",alignItems:"start",gap:8,flexShrink:0}}>
               <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 14px",fontSize:12,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
               {p.totalReviews>0&&<div style={{textAlign:"right"}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
@@ -418,13 +439,14 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
   if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
 
+  const exactCegep=CEGEPS.find(c=>c===cegep)||null;
   const pq=norm(profName.trim());
-  const profSuggestions=pq.length>=1?profs.filter(p=>p.cegep===cegep&&norm(p.name).includes(pq)).slice(0,5):[];
-  const allCourses=[...new Set(profs.filter(p=>p.cegep===cegep).flatMap(p=>p.courses||[]))].sort();
+  const profSuggestions=pq.length>=1&&exactCegep?profs.filter(p=>p.cegep===exactCegep&&norm(p.name).includes(pq)).slice(0,5):[];
+  const allCourses=exactCegep?[...new Set(profs.filter(p=>p.cegep===exactCegep).flatMap(p=>p.courses||[]))].sort():[];
   const cq=course.trim().toLowerCase();
   const courseSuggestions=cq.length>=1?allCourses.filter(c=>c.toLowerCase().includes(cq)).slice(0,5):[];
   const selectProf=p=>{setProfName(p.name);setDept(p.dept||"");setCourse("");setCustomCourse(false);setShowProfSug(false)};
-  const existingMatch=pq.length>=3?profs.find(p=>norm(p.name)===norm(formatName(profName))&&p.cegep===cegep):null;
+  const existingMatch=pq.length>=3&&exactCegep?profs.find(p=>norm(p.name)===norm(formatName(profName))&&p.cegep===exactCegep):null;
   const profCourses=existingMatch?.courses||[];
 
   const handleSubmit=async()=>{
@@ -450,9 +472,9 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
       if(!rcErr&&recentCount>=5){setError("Limite atteinte : max 5 évaluations par 24h.");setLoading(false);return}
 
       let profId;
-      const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===cegep);
+      const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===exactCegep);
       if(existing){profId=existing.id}else{
-        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep,dept:validDept,courses:[cleanCourse]}).select().single();
+        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep:exactCegep,dept:validDept,courses:[cleanCourse]}).select().single();
         if(e)throw e;profId=data.id;
       }
 
@@ -478,7 +500,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>100% anonyme. Aide les autres à faire le bon choix.</p>
       {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        <div><label style={lbl}>Cégep</label><select value={cegep} onChange={e=>setCegep(e.target.value)} style={{...inp,appearance:"auto"}}>{CEGEPS.map(c=><option key={c}>{c}</option>)}</select></div>
+        <div><label style={lbl}>Cégep</label><CegepPicker value={cegep} onChange={setCegep}/></div>
         <div style={{position:"relative"}}><label style={lbl}>Nom du prof</label>
           <input type="text" placeholder="Commence à écrire..." maxLength={100} value={profName} onChange={e=>{setProfName(e.target.value);setShowProfSug(true);setError("")}} onFocus={()=>setShowProfSug(true)} onBlur={()=>setTimeout(()=>setShowProfSug(false),200)} style={inp}/>
           {showProfSug&&profSuggestions.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",marginTop:4,zIndex:50,overflow:"hidden"}}>{profSuggestions.map((p,i)=><button key={p.id} onMouseDown={()=>selectProf(p)} style={{width:"100%",textAlign:"left",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:i<profSuggestions.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}><div><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"1px 0 0"}}>{p.dept}</p></div></button>)}</div>}
