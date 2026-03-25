@@ -769,9 +769,9 @@ export default function App(){
       const grouped={};
       reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});
       setReviewsByProf(grouped);
-      setTotalUsers(new Set(reviewsData.map(r=>r.user_id).filter(Boolean)).size);
     }
     if(likesData)setAllLikes(likesData);
+    supabase.rpc('get_registered_users_count').then(({data})=>{if(data!=null)setTotalUsers(data)});
     setLoading(false);
   };
   useEffect(()=>{loadData()},[]);
