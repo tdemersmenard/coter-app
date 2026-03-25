@@ -93,6 +93,41 @@ function CegepPicker({value,onChange,style}){
   );
 }
 
+// ============ SKELETON ============
+function Skeleton(){
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:9}}>
+      {[1,2,3,4].map(i=>(
+        <div key={i} className="skeleton" style={{height:88,borderRadius:"var(--border-radius-lg)",opacity:1-i*0.15}}/>
+      ))}
+    </div>
+  );
+}
+
+// ============ MOBILE NAV ============
+function MobileNav({page,setPage,user,goToLogin,goToAccount}){
+  const items=[
+    {id:"profs",icon:"⊞",l:"Profs"},
+    {id:"calc",icon:"∑",l:"Cote R"},
+    {id:"submit",icon:"✏",l:"Évaluer"},
+    {id:user?"account":"login",icon:user?"◎":"→",l:user?"Compte":"Connexion"},
+  ];
+  return(
+    <div className="mobile-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:"var(--color-background-primary)",borderTop:"0.5px solid var(--color-border-tertiary)",zIndex:100,justifyContent:"stretch",alignItems:"stretch",boxShadow:"0 -4px 16px rgba(0,0,0,0.07)"}}>
+      {items.map(t=>{
+        const active=page===t.id||(t.id===user?.id&&page==="account");
+        return(
+          <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}if(t.id==="login")goToLogin();else if(t.id==="account")goToAccount();else setPage(t.id)}}
+            style={{flex:1,border:"none",background:"none",padding:"10px 4px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",color:active?"#1D9E75":"var(--color-text-tertiary)",borderTop:`2px solid ${active?"#1D9E75":"transparent"}`,fontSize:10,fontWeight:active?600:400}}>
+            <span style={{fontSize:18,lineHeight:1}}>{t.icon}</span>
+            {t.l}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ============ NAV ============
 function Nav({page,setPage,user,goToLogin,goToAccount}){
   return(
@@ -151,19 +186,29 @@ function AccountPage({user,onLogout,onBack}){
 }
 
 // ============ LANDING ============
-function Landing({onStart}){
+function Landing({onStart,onLogin,totalProfs,totalReviews}){
   return(
-    <div style={{minHeight:"85vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"2rem 0.5rem"}}>
-      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--color-background-success)",borderRadius:20,padding:"4px 14px",marginBottom:18,fontSize:12,color:"#1D9E75"}}><span style={{width:6,height:6,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/>100% anonyme</div>
-      <Logo size="lg"/>
-      <p style={{fontSize:"min(36px, 8vw)",fontWeight:700,lineHeight:1.1,margin:"14px 0 8px",maxWidth:460,letterSpacing:"-0.03em",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>Drop ou keep?</p>
-      <p style={{fontSize:"min(17px, 4.5vw)",color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Rate tes profs. Check les ratings. Sauve ta session.</p>
-      <p style={{fontSize:14,color:"var(--color-text-tertiary)",maxWidth:370,lineHeight:1.55,margin:"0 0 28px",padding:"0 12px"}}>Ratings de profs, verdicts drop/keep, et calculateur de cote R — pour tous les cégeps du Québec.</p>
-      <button onClick={onStart} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px 34px",fontSize:15,fontWeight:500,cursor:"pointer"}}>Voir les profs &rarr;</button>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,maxWidth:480,width:"100%",marginTop:48,padding:"0 8px"}}>
-        {[{n:"48 cégeps",d:"Tous les cégeps du QC"},{n:"Drop/Keep",d:"Verdict clair par prof"},{n:"Cote R",d:"Formule avec écart-type"}].map((f,i)=>(
-          <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"14px 12px"}}><p style={{fontSize:14,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>{f.n}</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0,lineHeight:1.4}}>{f.d}</p></div>
-        ))}
+    <div className="page-enter">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:0}}>
+        <Logo size="sm"/>
+        <button onClick={onLogin} style={{background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)"}}>Connexion</button>
+      </div>
+      <div style={{minHeight:"80vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"2rem 0.5rem"}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--color-background-success)",borderRadius:20,padding:"4px 14px",marginBottom:18,fontSize:12,color:"#1D9E75",fontWeight:500}}><span style={{width:6,height:6,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/>100% anonyme · 100% gratuit</div>
+        <Logo size="lg"/>
+        <p style={{fontSize:"min(36px,8vw)",fontWeight:700,lineHeight:1.1,margin:"14px 0 8px",maxWidth:460,letterSpacing:"-0.03em",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>Drop ou keep?</p>
+        <p style={{fontSize:"min(17px,4.5vw)",color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Rate tes profs. Check les ratings avant de t'inscrire.</p>
+        <p style={{fontSize:14,color:"var(--color-text-tertiary)",maxWidth:370,lineHeight:1.55,margin:"0 0 28px",padding:"0 12px"}}>Verdicts drop/keep, stats détaillées et calculateur de cote R — pour tous les cégeps du Québec.</p>
+        <button onClick={onStart} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px 34px",fontSize:15,fontWeight:600,cursor:"pointer",boxShadow:"0 4px 14px rgba(29,158,117,0.3)"}}>Voir les profs &rarr;</button>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,maxWidth:480,width:"100%",marginTop:52,padding:"0 8px"}}>
+          {[
+            {n:totalProfs?`${totalProfs} profs`:"73 établissements",d:totalProfs?"Évalués par des étudiants":"Tous les cégeps du QC"},
+            {n:"Drop/Keep",d:"Verdict clair par prof"},
+            {n:totalReviews?`${totalReviews} avis`:"Cote R",d:totalReviews?"Soumis anonymement":"Formule avec écart-type"},
+          ].map((f,i)=>(
+            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px 12px"}}><p style={{fontSize:15,fontWeight:600,margin:"0 0 3px",color:"var(--color-text-primary)"}}>{f.n}</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0,lineHeight:1.4}}>{f.d}</p></div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -296,96 +341,90 @@ function LoginPage({onClose,onVerified}){
   );
 }
 
-// ============ STRIPE PAGE (real checkout) ============
-function StripePage({onClose,user,isPro,openLogin}){
-  const[loading,setLoading]=useState(false);
-  if(!user)return(<div style={{maxWidth:400,margin:"0 auto",textAlign:"center",padding:"60px 0"}}><div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"32px",border:"0.5px solid var(--color-border-tertiary)"}}><p style={{fontSize:15,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 12px"}}>Connecte-toi d'abord</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour t'abonner.</p><button onClick={openLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"11px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter</button></div></div>);
-  if(isPro)return(<div style={{maxWidth:400,margin:"0 auto",textAlign:"center",padding:"60px 0"}}><div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",padding:"32px",border:"0.5px solid var(--color-border-tertiary)"}}><div style={{width:48,height:48,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:22,color:"#1D9E75"}}>&#10003;</span></div><h2 style={{fontSize:20,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>T'es déjà PRO!</h2><p style={{fontSize:14,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu as accès à tout.</p><button onClick={onClose} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"11px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Retour &rarr;</button></div></div>);
-  const handleCheckout=async()=>{
-    setLoading(true);
-    try{
-      const res=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:user.email})});
-      const data=await res.json();
-      if(data.url)window.location.href=data.url;
-      else{alert("Erreur: "+data.error);setLoading(false)}
-    }catch(e){alert("Erreur de connexion");setLoading(false)}
-  };
+// ============ REVIEW CARD ============
+function ReviewCard({r,likes,userLiked,onLike}){
+  const c=rc(r.rating);
+  const diffColor=r.difficulty<=2?"#1D9E75":r.difficulty<=3?"#EF9F27":"#E24B4A";
+  const diffBg=r.difficulty<=2?"var(--color-background-success)":r.difficulty<=3?"var(--color-background-warning)":"var(--color-background-danger)";
   return(
-    <div style={{maxWidth:540,margin:"0 auto",padding:"24px 0"}}>
-      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",overflow:"hidden",border:"0.5px solid var(--color-border-tertiary)"}}>
-        <div style={{background:"var(--color-background-secondary)",padding:"20px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Logo size="sm"/><span style={{fontSize:12,color:"var(--color-text-tertiary)"}}>Paiement sécurisé</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",flexWrap:"wrap",gap:8}}><div><p style={{fontSize:16,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)"}}>CoteR PRO</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0}}>~4 mois, annule quand tu veux</p></div><p style={{fontSize:24,fontWeight:700,fontFamily:"'Space Mono',monospace",margin:0,color:"var(--color-text-primary)"}}>9,99$</p></div>
+    <div style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"12px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+          <div style={{width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,fontFamily:"'Space Mono',monospace",background:r.rating>=4?"var(--color-background-success)":r.rating>=3?"var(--color-background-warning)":"var(--color-background-danger)",color:c,flexShrink:0}}>{r.rating}</div>
+          <div style={{minWidth:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+              <p style={{fontSize:12,fontWeight:600,margin:0,color:"var(--color-text-primary)"}}>{r.course}</p>
+              {r.verdict&&<VBadge v={r.verdict} small/>}
+            </div>
+            <p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:"1px 0 0"}}>{new Date(r.created_at).toLocaleDateString('fr-CA',{month:'short',year:'numeric'})}</p>
+          </div>
         </div>
-        <div style={{padding:"16px 24px",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
-          {["Verdicts drop/keep","Tous les avis détaillés","Tags + stats avancées","Cote R + simulations"].map((f,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:i<3?6:0}}><div style={{width:16,height:16,borderRadius:"50%",background:"var(--color-background-success)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:9,color:"#1D9E75",fontWeight:500}}>&#10003;</span></div><span style={{fontSize:13,color:"var(--color-text-primary)"}}>{f}</span></div>
-          ))}
+        <div style={{display:"flex",gap:5,flexShrink:0,alignItems:"center"}}>
+          {r.difficulty&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:"var(--border-radius-md)",background:diffBg,color:diffColor,fontWeight:500,whiteSpace:"nowrap"}}>Diff. {r.difficulty}/5</span>}
+          {r.grade&&<span style={{fontSize:10,padding:"2px 7px",borderRadius:"var(--border-radius-md)",background:"var(--color-background-secondary)",color:"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{r.grade}%</span>}
         </div>
-        <div style={{padding:"20px 24px"}}>
-          <button onClick={handleCheckout} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"14px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",opacity:loading?0.8:1}}>{loading?"Redirection vers Stripe...":"Payer 9,99$ — Stripe Checkout"}</button>
-          <p style={{fontSize:11,color:"var(--color-text-tertiary)",textAlign:"center",margin:"12px 0 0"}}>Tu seras redirigé vers Stripe pour payer de façon sécurisée.</p>
-        </div>
-        <button onClick={onClose} style={{width:"100%",background:"none",border:"none",borderTop:"0.5px solid var(--color-border-tertiary)",padding:"12px",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer"}}>&larr; Retour</button>
+      </div>
+      <p style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.6,margin:"0 0 10px"}}>{r.review_text}</p>
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <button onClick={()=>onLike&&onLike(r.id)} style={{background:userLiked?"var(--color-background-success)":"none",border:"0.5px solid "+(userLiked?"#1D9E75":"var(--color-border-tertiary)"),borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,cursor:"pointer",color:userLiked?"#1D9E75":"var(--color-text-tertiary)",display:"flex",alignItems:"center",gap:4}}>
+          <span style={{fontSize:13}}>{userLiked?"♥":"♡"}</span>{likes||0}
+        </button>
       </div>
     </div>
   );
 }
 
-// ============ REVIEW CARD ============
-function ReviewCard({r,likes,userLiked,onLike}){const c=rc(r.rating);return(
-  <div style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"12px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6,flexWrap:"wrap",gap:6}}>
-      <div style={{display:"flex",alignItems:"center",gap:7}}>
-        <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,fontFamily:"'Space Mono',monospace",background:r.rating>=4?"var(--color-background-success)":r.rating>=3?"var(--color-background-warning)":"var(--color-background-danger)",color:c,flexShrink:0}}>{r.rating}</div>
-        <div><p style={{fontSize:12,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{r.course}</p><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>{new Date(r.created_at).toLocaleDateString('fr-CA',{month:'short',year:'numeric'})}</p></div>
-      </div>
-      {r.grade&&<span style={{fontSize:11,padding:"2px 7px",borderRadius:"var(--border-radius-md)",background:"var(--color-background-secondary)",color:"var(--color-text-secondary)"}}>Note: {r.grade}</span>}
-    </div>
-    <p style={{fontSize:13,color:"var(--color-text-primary)",lineHeight:1.55,margin:"0 0 8px"}}>{r.review_text}</p>
-    <div style={{display:"flex",justifyContent:"flex-end"}}>
-      <button onClick={()=>onLike&&onLike(r.id)} style={{background:"none",border:"0.5px solid "+(userLiked?"#1D9E75":"var(--color-border-tertiary)"),borderRadius:"var(--border-radius-md)",padding:"3px 10px",fontSize:11,cursor:"pointer",color:userLiked?"#1D9E75":"var(--color-text-tertiary)",display:"flex",alignItems:"center",gap:4,transition:"color 0.15s,border-color 0.15s"}}>
-        <span style={{fontSize:12}}>{userLiked?"♥":"♡"}</span>{likes||0}
-      </button>
-    </div>
-  </div>
-)}
-
 // ============ PROF DETAIL ============
 function ProfDetail({prof,reviews,onBack,onEvaluate,likesByReview,userLikes,onLike}){
+  const[sortR,setSortR]=useState("recent");
   const rating=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length*10)/10:0;
   const diff=reviews.length?Math.round(reviews.reduce((s,r)=>s+r.difficulty,0)/reviews.length*10)/10:0;
   const keepPct=reviews.length?Math.round(100*reviews.filter(r=>r.verdict==="keep").length/reviews.length):0;
   const verdict=keepPct>=50?"keep":"drop";
+  const diffColor=diff<=2?"#1D9E75":diff<=3?"#EF9F27":"#E24B4A";
+  const sorted=[...reviews].sort((a,b)=>sortR==="helpful"?((likesByReview?.[b.id]||0)-(likesByReview?.[a.id]||0)):new Date(b.created_at)-new Date(a.created_at));
   return(
-    <div style={{maxWidth:720,margin:"0 auto"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-        <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:0}}>&larr; Retour aux profs</button>
-        <button onClick={()=>onEvaluate(prof)} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Évaluer</button>
+    <div style={{maxWidth:720,margin:"0 auto"}} className="page-enter">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"4px 0",display:"flex",alignItems:"center",gap:4}}><span>←</span> Retour</button>
+        <button onClick={()=>onEvaluate(prof)} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,fontWeight:600,cursor:"pointer"}}>Évaluer ce prof</button>
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:18,gap:12}}>
         <div style={{minWidth:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}><h1 style={{fontSize:"min(21px, 5vw)",fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{prof.name}</h1>{reviews.length>0&&<VBadge v={verdict} small/>}</div>
-          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{prof.dept} — {prof.cegep}</p>
-          {prof.courses&&prof.courses.length>0&&<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"3px 0 0"}}>{prof.courses.join(" · ")}</p>}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}><h1 style={{fontSize:"min(22px,5.5vw)",fontWeight:700,margin:0,color:"var(--color-text-primary)"}}>{prof.name}</h1>{reviews.length>0&&<VBadge v={verdict}/>}</div>
+          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>{prof.dept} — {prof.cegep}</p>
+          {prof.courses&&prof.courses.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:5}}>{prof.courses.map(c=><span key={c} style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"var(--color-background-secondary)",color:"var(--color-text-secondary)"}}>{c}</span>)}</div>}
         </div>
-        {reviews.length>0&&<div style={{textAlign:"center",flexShrink:0}}><p style={{fontSize:34,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(rating)}}>{rating}</p><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>/5</p></div>}
+        {reviews.length>0&&<div style={{textAlign:"center",flexShrink:0,background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"10px 16px"}}><p style={{fontSize:32,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(rating),lineHeight:1}}>{rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:"2px 0 0"}}>/5 · {reviews.length} avis</p></div>}
       </div>
       {reviews.length>0&&<>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:18}}>
-          {[{l:"Reprendrait",v:`${keepPct}%`,c:keepPct>=70?"#1D9E75":keepPct>=50?"#EF9F27":"#E24B4A"},{l:"Difficulté",v:`${diff}/5`,c:"var(--color-text-primary)"},{l:"Avis",v:reviews.length,c:"var(--color-text-primary)"}].map((s,i)=>(
-            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 2px"}}>{s.l}</p><p style={{fontSize:16,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:s.c}}>{s.v}</p></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
+          {[
+            {l:"Reprendrait",v:`${keepPct}%`,c:keepPct>=70?"#1D9E75":keepPct>=50?"#EF9F27":"#E24B4A"},
+            {l:"Difficulté moy.",v:`${diff}/5`,c:diffColor},
+            {l:"Avis soumis",v:reviews.length,c:"var(--color-text-primary)"},
+          ].map((s,i)=>(
+            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"12px 8px",textAlign:"center"}}><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:"0 0 3px"}}>{s.l}</p><p style={{fontSize:18,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:s.c}}>{s.v}</p></div>
           ))}
         </div>
-        <h2 style={{fontSize:15,fontWeight:500,margin:"0 0 12px",color:"var(--color-text-primary)"}}>Avis ({reviews.length})</h2>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <h2 style={{fontSize:15,fontWeight:600,margin:0,color:"var(--color-text-primary)"}}>Avis ({reviews.length})</h2>
+          <div style={{display:"flex",gap:3}}>
+            {[{id:"recent",l:"Récents"},{id:"helpful",l:"Utiles"}].map(s=>(
+              <button key={s.id} onClick={()=>setSortR(s.id)} style={{background:sortR===s.id?"var(--color-background-secondary)":"transparent",border:"0.5px solid "+(sortR===s.id?"var(--color-border-secondary)":"transparent"),borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,cursor:"pointer",color:sortR===s.id?"var(--color-text-primary)":"var(--color-text-tertiary)",fontWeight:sortR===s.id?500:400}}>{s.l}</button>
+            ))}
+          </div>
+        </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {reviews.map((r,i)=><ReviewCard key={i} r={r} likes={likesByReview?likesByReview[r.id]||0:0} userLiked={userLikes?userLikes.has(r.id):false} onLike={onLike}/>)}
+          {sorted.map((r)=><ReviewCard key={r.id} r={r} likes={likesByReview?.[r.id]||0} userLiked={userLikes?.has(r.id)||false} onLike={onLike}/>)}
         </div>
       </>}
-      {reviews.length===0&&<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:14,color:"var(--color-text-tertiary)",margin:0}}>Aucun avis encore pour ce prof.</p></div>}
+      {reviews.length===0&&<div style={{textAlign:"center",padding:"40px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:14,color:"var(--color-text-secondary)",margin:"0 0 12px"}}>Aucun avis encore pour ce prof.</p><button onClick={()=>onEvaluate(prof)} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Être le premier à évaluer</button></div>}
     </div>
   );
 }
+
+const POPULAR_CEGEPS=["Cégep de Granby","Cégep Montmorency","Cégep du Vieux Montréal","Cégep de Sherbrooke","Cégep de Trois-Rivières","Cégep Limoilou","Collège Dawson","Cégep Édouard-Montpetit"];
 
 // ============ PROFS PAGE (reads from Supabase) ============
 function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLike}){
@@ -398,35 +437,53 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
   let list=q.length>=1?profsWithReviews.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):cq.length>=1?profsWithReviews.filter(p=>norm(p.cegep).includes(cq)):[];
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
   const showCegepCol=q.length>=1||(cq.length>=1&&CEGEPS.filter(c=>norm(c).includes(cq)).length>1);
+  const hasFilter=q.length>=1||cq.length>=1;
   return(
-    <div style={{maxWidth:720,margin:"0 auto"}}>
-      <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Rating des profs</h1>
+    <div style={{maxWidth:720,margin:"0 auto"}} className="page-enter">
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Rating des profs</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 14px"}}>Drop ou keep? Check avant de t'inscrire.</p>
-      <input type="text" placeholder="Chercher un prof ou cours (tous cégeps)..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:8}}/>
-      {q.length<1&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
-        <CegepPicker value={cegep} onChange={setCegep} style={{flex:"1 1 180px"}}/>
-        <div style={{display:"flex",gap:3}}>{[{id:"rating",l:"Meilleur"},{id:"difficulty",l:"Facile"}].map(s=>(<button key={s.id} onClick={()=>setSort(s.id)} style={{background:sort===s.id?"var(--color-background-secondary)":"transparent",border:"0.5px solid "+(sort===s.id?"var(--color-border-secondary)":"transparent"),borderRadius:"var(--border-radius-md)",padding:"4px 9px",fontSize:11,cursor:"pointer",color:sort===s.id?"var(--color-text-primary)":"var(--color-text-secondary)"}}>{s.l}</button>))}</div>
+      <input type="text" placeholder="Chercher un prof, cours ou département..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:8}}/>
+      {q.length<1&&<div style={{marginBottom:12}}>
+        <CegepPicker value={cegep} onChange={setCegep}/>
+        {!cq&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:6}}>
+          {POPULAR_CEGEPS.map(c=><button key={c} onClick={()=>setCegep(c)} style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-secondary)",color:"var(--color-text-secondary)",cursor:"pointer",whiteSpace:"nowrap"}}>{c.replace("Cégep de ","").replace("Cégep ","").replace("Collège ","")}</button>)}
+        </div>}
       </div>}
-      {q.length>=1&&<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 12px"}}>{list.length} résultat{list.length!==1?"s":""}</p>}
-      {list.length===0?<div style={{textAlign:"center",padding:"36px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}><p style={{fontSize:15,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{q||cq?"Aucun résultat":"Cherche ton cégep ou un prof"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{q||cq?"Sois le premier — clique \"Évaluer\"!":"Tape le nom de ton établissement dans le champ ci-dessus."}</p></div>
-      :<div style={{display:"flex",flexDirection:"column",gap:9}}>{list.map(p=>(
-        <div key={p.id} onClick={()=>setSel(p)} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="var(--color-border-secondary)"} onMouseLeave={e=>e.currentTarget.style.borderColor="var(--color-border-tertiary)"}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:8,gap:8}}>
-            <div style={{minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}><p style={{fontSize:14,fontWeight:500,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>{p.totalReviews>0&&<VBadge v={p.verdict} small/>}</div><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{showCegepCol?` — ${p.cegep}`:""}</p></div>
-            <div style={{display:"flex",alignItems:"start",gap:8,flexShrink:0}}>
-              <button onClick={e=>{e.stopPropagation();onEvaluate(p)}} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 14px",fontSize:12,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Évaluer</button>
-              {p.totalReviews>0&&<div style={{textAlign:"right"}}><p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating)}}>{p.rating}</p><p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:0}}>{p.totalReviews} avis</p></div>}
-            </div>
-          </div>
-          {p.totalReviews>0&&<div style={{display:"flex",gap:14}}>
-            <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Qualité</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.rating}/5</span></div><RBar value={p.rating}/></div>
-            <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Difficulté</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.difficulty}/5</span></div><RBar value={p.difficulty} invert/></div>
-          </div>}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        {hasFilter?<p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:0}}>{list.length} résultat{list.length!==1?"s":""}</p>:<span/>}
+        <div style={{display:"flex",gap:3}}>{[{id:"rating",l:"Meilleur"},{id:"difficulty",l:"Facile"}].map(s=>(<button key={s.id} onClick={()=>setSort(s.id)} style={{background:sort===s.id?"var(--color-background-secondary)":"transparent",border:"0.5px solid "+(sort===s.id?"var(--color-border-secondary)":"transparent"),borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,cursor:"pointer",color:sort===s.id?"var(--color-text-primary)":"var(--color-text-secondary)",fontWeight:sort===s.id?500:400}}>{s.l}</button>))}</div>
+      </div>
+      {list.length===0
+        ?<div style={{textAlign:"center",padding:"40px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}>
+          <p style={{fontSize:15,fontWeight:600,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{hasFilter?"Aucun résultat":"Cherche ton cégep ou un prof"}</p>
+          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{hasFilter?"Ce prof n'a pas encore été évalué.":"Tape le nom de ton établissement ci-dessus."}</p>
+          {hasFilter&&<button onClick={()=>onEvaluate({name:search.trim(),cegep:"",dept:""})} style={{marginTop:14,background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Être le premier à évaluer</button>}
         </div>
-      ))}</div>}
-      {q.length>=1&&<div style={{textAlign:"center",marginTop:18,padding:"14px 16px",borderTop:"0.5px solid var(--color-border-tertiary)"}}>
-        <p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 6px"}}>Ton prof n'apparaît pas? C'est qu'il n'a pas encore été évalué.</p>
-        <button onClick={()=>onEvaluate({name:search.trim(),cegep:"",dept:""})} style={{background:"none",border:"0.5px solid #1D9E75",borderRadius:"var(--border-radius-md)",padding:"5px 14px",fontSize:12,color:"#1D9E75",cursor:"pointer",fontWeight:500}}>Être le premier à évaluer "{search.trim()}"</button>
+        :<div style={{display:"flex",flexDirection:"column",gap:8}}>{list.map(p=>(
+          <div key={p.id} onClick={()=>setSel(p)} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px 16px",cursor:"pointer",transition:"border-color 0.15s, box-shadow 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--color-border-secondary)";e.currentTarget.style.boxShadow="var(--shadow-sm)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--color-border-tertiary)";e.currentTarget.style.boxShadow="none"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:p.totalReviews>0?10:0,gap:8}}>
+              <div style={{minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                  <p style={{fontSize:14,fontWeight:600,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>
+                  {p.totalReviews>0&&<VBadge v={p.verdict} small/>}
+                </div>
+                <p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept}{showCegepCol?` — ${p.cegep}`:""}</p>
+              </div>
+              {p.totalReviews>0&&<div style={{textAlign:"right",flexShrink:0}}>
+                <p style={{fontSize:24,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating),lineHeight:1}}>{p.rating}</p>
+                <p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:"2px 0 0"}}>{p.totalReviews} avis</p>
+              </div>}
+            </div>
+            {p.totalReviews>0&&<div style={{display:"flex",gap:14}}>
+              <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Qualité</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.rating}/5</span></div><RBar value={p.rating}/></div>
+              <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:10,color:"var(--color-text-secondary)"}}>Difficulté</span><span style={{fontSize:10,fontWeight:500,color:"var(--color-text-primary)"}}>{p.difficulty}/5</span></div><RBar value={p.difficulty} invert/></div>
+            </div>}
+          </div>
+        ))}</div>
+      }
+      {q.length>=1&&list.length>0&&<div style={{textAlign:"center",marginTop:16,padding:"12px 16px",borderTop:"0.5px solid var(--color-border-tertiary)"}}>
+        <p style={{fontSize:12,color:"var(--color-text-tertiary)",margin:"0 0 6px"}}>Ton prof n'est pas dans la liste? Il n'a pas encore été évalué.</p>
+        <button onClick={()=>onEvaluate({name:search.trim(),cegep:"",dept:""})} style={{background:"none",border:"0.5px solid #1D9E75",borderRadius:"var(--border-radius-md)",padding:"5px 14px",fontSize:12,color:"#1D9E75",cursor:"pointer",fontWeight:500}}>Évaluer "{search.trim()}"</button>
       </div>}
     </div>
   );
@@ -437,7 +494,16 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   const[cegep,setCegep]=useState(prefill?.cegep||"Cégep de Granby");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[customCourse,setCustomCourse]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[lastSubmitTime,setLastSubmitTime]=useState(0);const[submitCooldown,setSubmitCooldown]=useState(false);
 
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
-  if(submitted)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{color:"#1D9E75",fontSize:20}}>&#10003;</span></div><h2 style={{fontSize:19,fontWeight:500,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2><p style={{fontSize:13,color:"var(--color-text-secondary)"}}>Ton évaluation a été soumise anonymement.</p><button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{marginTop:16,background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)"}}>Évaluer un autre prof</button></div>);
+  if(submitted)return(
+    <div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}} className="page-enter">
+      <div style={{width:52,height:52,borderRadius:"50%",background:"var(--color-background-success)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:16}}><span style={{color:"#1D9E75",fontSize:24}}>✓</span></div>
+      <h2 style={{fontSize:20,fontWeight:700,margin:"0 0 6px",color:"var(--color-text-primary)"}}>Merci!</h2>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 24px"}}>Ton évaluation a été soumise anonymement.</p>
+      <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+        <button onClick={()=>{setSubmitted(false);setProfName("");setCourse("");setQuality("");setDiff("");setVerdict("");setReview("");setDept("");setError("")}} style={{background:"var(--color-background-secondary)",border:"none",borderRadius:"var(--border-radius-md)",padding:"9px 20px",fontSize:13,cursor:"pointer",color:"var(--color-text-primary)",fontWeight:500}}>Évaluer un autre prof</button>
+      </div>
+    </div>
+  );
 
   const exactCegep=CEGEPS.find(c=>c===cegep)||null;
   const pq=norm(profName.trim());
@@ -495,8 +561,8 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
   };
 
   return(
-    <div style={{maxWidth:620,margin:"0 auto"}}>
-      <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Évaluer un prof</h1>
+    <div style={{maxWidth:620,margin:"0 auto"}} className="page-enter">
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Évaluer un prof</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>100% anonyme. Aide les autres à faire le bon choix.</p>
       {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -524,14 +590,24 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
           )}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <div><label style={lbl}>Qualité</label><div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setQuality(String(n))} style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:quality===String(n)?700:400,border:quality===String(n)?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:quality===String(n)?"var(--color-background-success)":"var(--color-background-primary)",color:quality===String(n)?"#1D9E75":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>)}</div></div>
-          <div><label style={lbl}>Difficulté</label><div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=><button key={n} onClick={()=>setDiff(String(n))} style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:diff===String(n)?700:400,border:diff===String(n)?"2px solid #EF9F27":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:diff===String(n)?"var(--color-background-warning)":"var(--color-background-primary)",color:diff===String(n)?"#BA7517":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>)}</div></div>
+          <div>
+            <label style={lbl}>Qualité du prof</label>
+            <div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=>{const sel=quality===String(n);return<button key={n} onClick={()=>setQuality(String(n))} style={{flex:1,padding:"9px 0",fontSize:14,fontWeight:sel?700:400,border:sel?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:sel?"var(--color-background-success)":"var(--color-background-primary)",color:sel?"#1D9E75":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>})}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Mauvais</span><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Excellent</span></div>
+          </div>
+          <div>
+            <label style={lbl}>Difficulté du cours</label>
+            <div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=>{const sel=diff===String(n);const dc=n<=2?"#1D9E75":n<=3?"#EF9F27":"#E24B4A";const dbg=n<=2?"var(--color-background-success)":n<=3?"var(--color-background-warning)":"var(--color-background-danger)";return<button key={n} onClick={()=>setDiff(String(n))} style={{flex:1,padding:"9px 0",fontSize:14,fontWeight:sel?700:400,border:sel?`2px solid ${dc}`:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:sel?dbg:"var(--color-background-primary)",color:sel?dc:"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>})}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Facile</span><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Difficile</span></div>
+          </div>
         </div>
         <div><label style={lbl}>Drop ou keep?</label><div style={{display:"flex",gap:8}}>
           <button onClick={()=>setVerdict("keep")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="keep"?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",cursor:"pointer"}}>KEEP</button>
           <button onClick={()=>setVerdict("drop")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="drop"?"2px solid #E24B4A":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-danger)",color:"#E24B4A",cursor:"pointer"}}>DROP</button>
         </div></div>
-        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} maxLength={1000} value={review} onChange={e=>setReview(e.target.value.slice(0,1000))} style={{...inp,resize:"vertical",fontFamily:"inherit"}}/><p style={{fontSize:11,color:review.length>900?"#E24B4A":"var(--color-text-tertiary)",textAlign:"right",margin:"3px 0 0"}}>{review.length}/1000</p></div>
+        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} maxLength={1000} value={review} onChange={e=>setReview(e.target.value.slice(0,1000))} style={{...inp,resize:"vertical",fontFamily:"inherit",lineHeight:1.55}}/><p style={{fontSize:11,color:review.length>900?"#E24B4A":review.length>0?"var(--color-text-secondary)":"var(--color-text-tertiary)",textAlign:"right",margin:"4px 0 0"}}>{review.length}/1000</p></div>
         <button onClick={handleSubmit} disabled={loading||submitCooldown} style={{width:"100%",background:(loading||submitCooldown)?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:(loading||submitCooldown)?"wait":"pointer",opacity:(loading||submitCooldown)?0.8:1}}>{loading?"Envoi...":"Soumettre anonymement"}</button>
       </div>
     </div>
@@ -544,8 +620,8 @@ function CalcPage(){
   const update=(i,f,v)=>{if(f!=="name"&&v!==""&&(isNaN(v)||parseFloat(v)<0))return;if((f==="grade"||f==="groupAvg")&&parseFloat(v)>100)return;if(f==="groupStd"&&parseFloat(v)>50)return;const c=[...courses];c[i]={...c[i],[f]:v};setCourses(c)};
   const coteR=calculateCoteR(courses);const filled=courses.filter(c=>c.grade&&c.groupAvg&&c.groupStd).length;
   return(
-    <div style={{maxWidth:720,margin:"0 auto"}}>
-      <h1 style={{fontSize:21,fontWeight:500,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Calculateur de cote R</h1>
+    <div style={{maxWidth:720,margin:"0 auto"}} className="page-enter">
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Calculateur de cote R</h1>
       <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Entre ta note, la moyenne et l'écart-type du groupe.</p>
       <div style={{background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:20,display:"flex",alignItems:"start",gap:8}}><span style={{fontSize:14,marginTop:1}}>&#9432;</span><p style={{fontSize:12,color:"var(--color-text-info)",margin:0,lineHeight:1.5}}>Trouve ces infos sur <strong style={{fontWeight:500}}>Omnivox → Résultats</strong> ou <strong style={{fontWeight:500}}>Léa → Mon dossier</strong>.</p></div>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
@@ -553,7 +629,7 @@ function CalcPage(){
         {courses.map((c,i)=>(<div key={i} style={{display:"grid",gridTemplateColumns:"minmax(0,1.5fr) repeat(3,minmax(0,1fr)) 28px",gap:6,alignItems:"center"}}>
           <input type="text" placeholder={`Cours ${i+1}`} value={c.name} onChange={e=>update(i,"name",e.target.value)} style={{padding:"8px 8px",fontSize:13,border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box",minWidth:0}}/>
           {["grade","groupAvg","groupStd"].map(f=><input key={f} type="text" inputMode="decimal" placeholder="—" value={c[f]} onChange={e=>update(i,f,e.target.value)} style={{padding:"8px 2px",fontSize:13,fontWeight:500,textAlign:"center",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-secondary)",color:"var(--color-text-primary)",boxSizing:"border-box",minWidth:0}}/>)}
-          <button onClick={()=>{if(courses.length>1)setCourses(courses.filter((_,j)=>j!==i))}} style={{background:"none",border:"none",fontSize:16,color:"var(--color-text-tertiary)",cursor:"pointer",padding:0}}>&times;</button>
+          <button onClick={()=>{if(courses.length>1)setCourses(courses.filter((_,j)=>j!==i))}} style={{background:"none",border:"none",fontSize:16,color:courses.length>1?"var(--color-text-tertiary)":"transparent",cursor:courses.length>1?"pointer":"default",padding:0,pointerEvents:courses.length>1?"auto":"none"}}>&times;</button>
         </div>))}
       </div>
       <button onClick={()=>setCourses([...courses,{name:"",grade:"",groupAvg:"",groupStd:""}])} style={{background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"8px 16px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)",marginBottom:20}}>+ Ajouter un cours</button>
@@ -644,19 +720,23 @@ export default function App(){
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);navTo("profs")};
   const wrap=ch=><div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
-  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")}/>);
+  const totalProfs=profs.length;
+  const totalReviews=Object.values(reviewsByProf).reduce((s,arr)=>s+arr.length,0);
+
+  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")} onLogin={goToLogin} totalProfs={totalProfs} totalReviews={totalReviews}/>);
 
   return wrap(<>
     {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
-    {loading&&page==="profs"&&<div style={{textAlign:"center",padding:"60px 0"}}><p style={{color:"var(--color-text-tertiary)"}}>Chargement...</p></div>}
+    {loading&&page==="profs"&&<Skeleton/>}
     {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
     {page==="calc"&&<CalcPage/>}
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
-    {page==="login"&&<LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/>}
+    {page==="login"&&<div className="page-enter"><LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/></div>}
     {showWelcome&&<WelcomePage onDone={()=>setShowWelcome(false)}/>}
-    {page==="account"&&<AccountPage user={user} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/>}
+    {page==="account"&&<div className="page-enter"><AccountPage user={user} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/></div>}
     <footer style={{marginTop:48,paddingTop:14,paddingBottom:24,borderTop:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
       <Logo size="sm"/><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>Fait par des étudiants, pour les étudiants.</p>
     </footer>
+    <MobileNav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>
   </>);
 }
