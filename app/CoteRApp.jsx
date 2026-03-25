@@ -602,13 +602,22 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
     setError("");setLoading(true);
     const formatted=formatName(cleanName);
     try{
-      // Rate limit Supabase: max 5 par 24h
+      // Rate limit par user: max 10 évaluations par 24h
       const since=new Date(Date.now()-24*60*60*1000).toISOString();
       const{count:recentCount,error:rcErr}=await supabase.from('reviews').select('*',{count:'exact',head:true}).eq('user_id',user.id).gte('created_at',since);
-      if(!rcErr&&recentCount>=5){setError("Limite atteinte : max 5 évaluations par 24h.");setLoading(false);return}
+      if(!rcErr&&recentCount>=10){setError("Limite atteinte : max 10 évaluations par 24h.");setLoading(false);return}
 
       let profId;
       const existing=profs.find(p=>p.name.toLowerCase()===formatted.toLowerCase()&&p.cegep===exactCegep);
+      if(!existing){
+        // Limite par user: max 5 nouveaux profs par 24h
+        const{data:userProfs,error:upErr}=await supabase.from('reviews').select('prof_id').eq('user_id',user.id).gte('created_at',since);
+        if(!upErr&&userProfs){
+          const recentProfIds=new Set(userProfs.map(r=>r.prof_id));
+          const newProfsToday=[...recentProfIds].filter(id=>!profs.find(p=>p.id===id));
+          if(newProfsToday.length>=5){setError("Limite atteinte : max 5 nouveaux profs ajoutés par 24h.");setLoading(false);return}
+        }
+      }
       if(existing){profId=existing.id}else{
         const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep:exactCegep,dept:validDept,courses:[cleanCourse]}).select().single();
         if(e)throw e;profId=data.id;
