@@ -106,4 +106,6 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 640px) {
   .mobile-nav { display: flex; }
   body { padding-bottom: 68px; }
+  .nav-links { display: none !important; }
+  .nav-auth  { display: none !important; }
 }

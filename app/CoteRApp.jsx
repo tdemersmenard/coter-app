@@ -134,7 +134,7 @@ function Nav({page,setPage,user,goToLogin,goToAccount,onlineCount}){
     <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:10}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
         <span onClick={()=>setPage("landing")} style={{flexShrink:0,cursor:"pointer"}}><Logo size="sm"/></span>
-        <div style={{display:"flex",gap:2,minWidth:0}}>
+        <div className="nav-links" style={{display:"flex",gap:2,minWidth:0}}>
           {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
             <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?600:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
           ))}
@@ -144,7 +144,7 @@ function Nav({page,setPage,user,goToLogin,goToAccount,onlineCount}){
           <span style={{fontSize:11,color:"#1D9E75",fontWeight:500,whiteSpace:"nowrap"}}>{onlineCount} en ligne</span>
         </div>}
       </div>
-      <div style={{flexShrink:0}}>
+      <div className="nav-auth" style={{flexShrink:0}}>
         {user
           ?<button onClick={goToAccount} style={{width:34,height:34,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:600,color:"var(--color-text-info)",border:page==="account"?"2px solid #1D9E75":"2px solid transparent",cursor:"pointer",padding:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
           :<button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,fontWeight:500,cursor:"pointer",whiteSpace:"nowrap"}}>Connexion</button>}
@@ -190,7 +190,7 @@ function AccountPage({user,onLogout,onBack}){
 }
 
 // ============ LANDING ============
-function Landing({onStart,onLogin,onAccount,user,totalProfs,totalReviews}){
+function Landing({onStart,onLogin,onAccount,user,totalUsers,totalReviews}){
   return(
     <div className="page-enter">
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:0}}>
@@ -208,7 +208,7 @@ function Landing({onStart,onLogin,onAccount,user,totalProfs,totalReviews}){
         <button onClick={onStart} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px 34px",fontSize:15,fontWeight:600,cursor:"pointer",boxShadow:"0 4px 14px rgba(29,158,117,0.3)"}}>Voir les profs &rarr;</button>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,maxWidth:480,width:"100%",marginTop:52,padding:"0 8px"}}>
           {[
-            {n:totalProfs?`${totalProfs} profs`:"73 établissements",d:totalProfs?"Évalués par des étudiants":"Tous les cégeps du QC"},
+            {n:totalUsers?`${totalUsers} étudiants`:"Communauté",d:totalUsers?"Inscrits sur coteR":"Tous les cégeps du QC"},
             {n:"Drop/Keep",d:"Verdict clair par prof"},
             {n:totalReviews?`${totalReviews} avis`:"Cote R",d:totalReviews?"Soumis anonymement":"Formule avec écart-type"},
           ].map((f,i)=>(
@@ -718,7 +718,7 @@ export default function App(){
   const[page,setPage]=useState(()=>{try{const hash=window.location.hash.replace('#','');if(hash&&!hash.includes('=')&&HASH_PAGE[hash])return HASH_PAGE[hash];const s=localStorage.getItem("coter_page");return s&&s!=="login"?s:"landing"}catch{return"landing"}});const[prevPage,setPrevPage]=useState("profs");
   const[user,setUser]=useState(null);
   const[onlineCount,setOnlineCount]=useState(0);
-  const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});const[allLikes,setAllLikes]=useState([]);
+  const[profs,setProfs]=useState([]);const[reviewsByProf,setReviewsByProf]=useState({});const[allLikes,setAllLikes]=useState([]);const[totalUsers,setTotalUsers]=useState(0);
   const[loading,setLoading]=useState(true);
   const[submitPrefill,setSubmitPrefill]=useState(null);
   const[showWelcome,setShowWelcome]=useState(false);
@@ -759,14 +759,16 @@ export default function App(){
 
   const loadData=async()=>{
     setLoading(true);
-    const[{data:profsData},{data:reviewsData},{data:likesData}]=await Promise.all([
+    const[{data:profsData},{data:reviewsData},{data:likesData},{data:userCountData}]=await Promise.all([
       supabase.from('profs').select('*').order('name'),
       supabase.from('reviews').select('*').order('created_at',{ascending:false}),
       supabase.from('review_likes').select('review_id,user_id'),
+      supabase.rpc('get_user_count').catch(()=>({data:null})),
     ]);
     if(profsData)setProfs(profsData);
     if(reviewsData){const grouped={};reviewsData.forEach(r=>{if(!grouped[r.prof_id])grouped[r.prof_id]=[];grouped[r.prof_id].push(r)});setReviewsByProf(grouped);}
     if(likesData)setAllLikes(likesData);
+    if(userCountData!=null)setTotalUsers(userCountData);
     setLoading(false);
   };
   useEffect(()=>{loadData()},[]);
@@ -775,7 +777,7 @@ export default function App(){
   const userLikes=useMemo(()=>new Set(user?allLikes.filter(l=>l.user_id===user.id).map(l=>l.review_id):[]),[allLikes,user]);
 
   useEffect(()=>{
-    const onPop=()=>{const hash=window.location.hash.replace('#','');if(hash.includes('='))return;const p=HASH_PAGE[hash]||'profs';setPage(p);try{if(p!=="login")localStorage.setItem("coter_page",p)}catch{}};
+    const onPop=()=>{const hash=window.location.hash.replace('#','');if(hash.includes('='))return;const p=HASH_PAGE[hash]!=null?HASH_PAGE[hash]:'profs';setPage(prev=>{setPrevPage(prev);return p});try{if(p!=="login")localStorage.setItem("coter_page",p)}catch{}};
     window.addEventListener('popstate',onPop);
     return()=>window.removeEventListener('popstate',onPop);
   },[]);
@@ -795,14 +797,13 @@ export default function App(){
     }
   };
   const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
-  const navTo=t=>{setPage(t);syncHash(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
+  const navTo=t=>{setPrevPage(p=>p===t?p:page);setPage(t);syncHash(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);navTo("profs")};
   const wrap=ch=><div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
-  const totalProfs=profs.length;
   const totalReviews=Object.values(reviewsByProf).reduce((s,arr)=>s+arr.length,0);
 
-  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")} onLogin={goToLogin} onAccount={goToAccount} user={user} totalProfs={totalProfs} totalReviews={totalReviews}/>);
+  if(page==="landing")return wrap(<Landing onStart={()=>navTo("profs")} onLogin={goToLogin} onAccount={goToAccount} user={user} totalUsers={totalUsers} totalReviews={totalReviews}/>);
 
   return wrap(<>
     {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount} onlineCount={onlineCount}/>}
