@@ -108,6 +108,7 @@ function Skeleton(){
 function MobileNav({page,setPage,user,goToLogin,goToAccount}){
   const items=[
     {id:"profs",icon:"⊞",l:"Profs"},
+    {id:"classement",icon:"★",l:"Top"},
     {id:"calc",icon:"∑",l:"Cote R"},
     {id:"submit",icon:"✏",l:"Évaluer"},
     {id:user?"account":"login",icon:user?"◎":"→",l:user?"Compte":"Connexion"},
@@ -133,9 +134,9 @@ function Nav({page,setPage,user,goToLogin,goToAccount}){
   return(
     <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 0",borderBottom:"0.5px solid var(--color-border-tertiary)",marginBottom:20,gap:10}}>
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
-        <span onClick={()=>setPage("profs")} style={{flexShrink:0}}><Logo size="sm"/></span>
+        <span onClick={()=>setPage("landing")} style={{flexShrink:0,cursor:"pointer"}}><Logo size="sm"/></span>
         <div style={{display:"flex",gap:2,minWidth:0}}>
-          {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
+          {[{id:"profs",l:"Profs"},{id:"classement",l:"Top"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
             <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?600:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
           ))}
         </div>
@@ -424,6 +425,70 @@ function ProfDetail({prof,reviews,onBack,onEvaluate,likesByReview,userLikes,onLi
   );
 }
 
+// ============ RANKING PAGE ============
+function RankingPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLike}){
+  const[sel,setSel]=useState(null);
+  const MIN=2;
+  const stats=profs.map(p=>{
+    const revs=reviewsByProf[p.id]||[];
+    if(revs.length<MIN)return null;
+    const rating=Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10;
+    const diff=Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10;
+    const keepPct=Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length);
+    return{...p,rating,difficulty:diff,totalReviews:revs.length,keepPct,verdict:keepPct>=50?"keep":"drop"};
+  }).filter(Boolean);
+
+  if(sel){const revs=reviewsByProf[sel.id]||[];return<ProfDetail prof={sel} reviews={revs} onBack={()=>setSel(null)} onEvaluate={onEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={onLike}/>}
+
+  const best=[...stats].sort((a,b)=>b.rating-a.rating).slice(0,5);
+  const worst=[...stats].sort((a,b)=>a.rating-b.rating).slice(0,5);
+
+  const RankCard=({rank,p,valueLabel,valueColor})=>(
+    <div onClick={()=>setSel(p)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",cursor:"pointer",transition:"border-color 0.15s,box-shadow 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--color-border-secondary)";e.currentTarget.style.boxShadow="var(--shadow-sm)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--color-border-tertiary)";e.currentTarget.style.boxShadow="none"}}>
+      <span style={{fontSize:15,fontFamily:"'Space Mono',monospace",fontWeight:700,color:"var(--color-text-tertiary)",minWidth:22,textAlign:"center"}}>#{rank}</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
+          <p style={{fontSize:14,fontWeight:600,margin:0,color:"var(--color-text-primary)"}}>{p.name}</p>
+          <VBadge v={p.verdict} small/>
+        </div>
+        <p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0}}>{p.dept} — {p.cegep}</p>
+      </div>
+      <div style={{textAlign:"right",flexShrink:0}}>
+        <p style={{fontSize:22,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:valueColor,lineHeight:1}}>{valueLabel}</p>
+        <p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:"2px 0 0"}}>{p.totalReviews} avis</p>
+      </div>
+    </div>
+  );
+
+  if(!stats.length)return(
+    <div className="page-enter" style={{maxWidth:720,margin:"0 auto"}}>
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Classement</h1>
+      <div style={{textAlign:"center",padding:"48px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",marginTop:20}}>
+        <p style={{fontSize:14,color:"var(--color-text-tertiary)",margin:0}}>Pas encore assez d'avis pour établir un classement.</p>
+      </div>
+    </div>
+  );
+
+  return(
+    <div className="page-enter" style={{maxWidth:720,margin:"0 auto"}}>
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Classement</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 28px"}}>Tous les cégeps confondus — minimum {MIN} avis.</p>
+      <div style={{marginBottom:32}}>
+        <h2 style={{fontSize:16,fontWeight:600,margin:"0 0 12px",color:"var(--color-text-primary)",display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>🏆</span>Meilleurs profs</h2>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {best.map((p,i)=><RankCard key={p.id} rank={i+1} p={p} valueLabel={p.rating} valueColor={rc(p.rating)}/>)}
+        </div>
+      </div>
+      <div style={{marginBottom:32}}>
+        <h2 style={{fontSize:16,fontWeight:600,margin:"0 0 12px",color:"var(--color-text-primary)",display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>⚠️</span>Profs à éviter</h2>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {worst.map((p,i)=><RankCard key={p.id} rank={i+1} p={p} valueLabel={p.rating} valueColor={rc(p.rating)}/>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const POPULAR_CEGEPS=["Cégep de Granby","Cégep Montmorency","Cégep du Vieux Montréal","Cégep de Sherbrooke","Cégep de Trois-Rivières","Cégep Limoilou","Collège Dawson","Cégep Édouard-Montpetit"];
 
 // ============ PROFS PAGE (reads from Supabase) ============
@@ -640,7 +705,7 @@ function CalcPage(){
 }
 
 // ============ MAIN APP ============
-const PAGE_HASH={landing:"",profs:"profs",calc:"calc",submit:"evaluer",login:"connexion",account:"compte"};
+const PAGE_HASH={landing:"",profs:"profs",classement:"classement",calc:"calc",submit:"evaluer",login:"connexion",account:"compte"};
 const HASH_PAGE=Object.fromEntries(Object.entries(PAGE_HASH).map(([k,v])=>[v,k]));
 function syncHash(t){try{const h=PAGE_HASH[t]??'';window.history.pushState({page:t},'',h?'#'+h:window.location.pathname+window.location.search)}catch{}}
 
@@ -729,6 +794,7 @@ export default function App(){
     {!["login","account"].includes(page)&&<Nav page={page} setPage={navTo} user={user} goToLogin={goToLogin} goToAccount={goToAccount}/>}
     {loading&&page==="profs"&&<Skeleton/>}
     {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
+    {page==="classement"&&<RankingPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
     {page==="calc"&&<CalcPage/>}
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
     {page==="login"&&<div className="page-enter"><LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/></div>}
