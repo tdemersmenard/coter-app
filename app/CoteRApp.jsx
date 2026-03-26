@@ -778,7 +778,8 @@ function ConfessionsPage({user,goToLogin}){
 
   const fetchConfessions=async(cg,pg,append=false)=>{
     setLoadingFeed(true);
-    const{data}=await supabase.from('confessions').select('id,cegep,content,likes,created_at').eq('cegep',cg).order('created_at',{ascending:false}).range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
+    const q=supabase.from('confessions').select('id,cegep,content,likes,created_at').order('created_at',{ascending:false}).range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
+    const{data}=await(cg==="__all__"?q:q.eq('cegep',cg));
     if(data){
       setConfessions(prev=>append?[...prev,...data]:data);
       setHasMore(data.length===PAGE_SIZE+1);
@@ -824,12 +825,16 @@ function ConfessionsPage({user,goToLogin}){
 
       {/* Sélecteur de cégep */}
       <div style={{marginBottom:16}}>
-        <label style={lbl}>Cégep</label>
-        <CegepPicker value={cegep} onChange={v=>{if(CEGEPS.includes(v))setCegep(v);else setCegep(v)}}/>
+        <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setCegep("__all__")} style={{fontSize:12,padding:"5px 12px",borderRadius:20,border:cegep==="__all__"?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep==="__all__"?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep==="__all__"?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",fontWeight:cegep==="__all__"?600:400}}>Tous les cégeps</button>
+          <button onClick={()=>setCegep("Cégep de Granby")} style={{fontSize:12,padding:"5px 12px",borderRadius:20,border:cegep!=="__all__"?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep!=="__all__"?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep!=="__all__"?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",fontWeight:cegep!=="__all__"?600:400}}>Mon cégep</button>
+        </div>
+        {cegep!=="__all__"&&<CegepPicker value={cegep} onChange={v=>setCegep(v)}/>}
       </div>
 
-      {/* Zone de post */}
-      <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px",marginBottom:20,position:"relative"}}>
+      {/* Zone de post — cachée en mode "tous les cégeps" */}
+      {cegep==="__all__"&&<div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"12px 16px",marginBottom:20}}><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>Sélectionne un cégep spécifique pour poster une confession.</p></div>}
+      <div style={{display:cegep==="__all__"?"none":"block",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px",marginBottom:20,position:"relative"}}>
         {!user&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.03)",backdropFilter:"blur(2px)",borderRadius:"var(--border-radius-lg)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:2,gap:10}}>
           <p style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",margin:0}}>Connecte-toi pour poster</p>
           <button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Se connecter →</button>
@@ -861,6 +866,7 @@ function ConfessionsPage({user,goToLogin}){
           :<div style={{display:"flex",flexDirection:"column",gap:8}}>
             {confessions.map(c=>(
               <div key={c.id} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px 16px"}}>
+                {cegep==="__all__"&&<span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:"var(--color-background-secondary)",color:"var(--color-text-secondary)",display:"inline-block",marginBottom:8}}>{c.cegep}</span>}
                 <p style={{fontSize:14,color:"var(--color-text-primary)",lineHeight:1.6,margin:"0 0 10px"}}>{c.content}</p>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontSize:11,color:"var(--color-text-tertiary)"}}>{timeAgo(c.created_at)}</span>
