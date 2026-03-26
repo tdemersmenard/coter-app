@@ -201,20 +201,39 @@ function Landing({onStart,onLogin,onAccount,user,totalUsers,totalReviews}){
           ?<button onClick={onAccount} style={{width:34,height:34,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:600,color:"var(--color-text-info)",border:"2px solid transparent",cursor:"pointer",padding:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</button>
           :<button onClick={onLogin} style={{background:"none",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-md)",padding:"7px 16px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)"}}>Connexion</button>}
       </div>
-      <div style={{minHeight:"80vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:"2rem 0.5rem"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",padding:"3rem 0.5rem 1.5rem"}}>
         <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"var(--color-background-success)",borderRadius:20,padding:"4px 14px",marginBottom:18,fontSize:12,color:"#1D9E75",fontWeight:500}}><span style={{width:6,height:6,borderRadius:"50%",background:"#1D9E75",display:"inline-block"}}/>100% anonyme · 100% gratuit</div>
         <Logo size="lg"/>
-        <p style={{fontSize:"min(36px,8vw)",fontWeight:700,lineHeight:1.1,margin:"14px 0 8px",maxWidth:460,letterSpacing:"-0.03em",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>Drop ou keep?</p>
-        <p style={{fontSize:"min(17px,4.5vw)",color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Rate tes profs. Check les ratings avant de t'inscrire.</p>
-        <p style={{fontSize:14,color:"var(--color-text-tertiary)",maxWidth:370,lineHeight:1.55,margin:"0 0 28px",padding:"0 12px"}}>Verdicts drop/keep, stats détaillées et calculateur de cote R — pour tous les cégeps du Québec.</p>
-        <button onClick={onStart} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px 34px",fontSize:15,fontWeight:600,cursor:"pointer",boxShadow:"0 4px 14px rgba(29,158,117,0.3)"}}>Voir les profs &rarr;</button>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,maxWidth:480,width:"100%",marginTop:52,padding:"0 8px"}}>
+        <p style={{fontSize:"min(34px,8vw)",fontWeight:700,lineHeight:1.1,margin:"14px 0 10px",maxWidth:460,letterSpacing:"-0.03em",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>Drop ou keep?</p>
+        <p style={{fontSize:"min(16px,4.2vw)",color:"var(--color-text-secondary)",margin:"0 0 6px",maxWidth:400}}>Lis les avis sur tes profs avant de choisir tes cours — ou partage ton expérience pour aider les autres.</p>
+        <p style={{fontSize:13,color:"var(--color-text-tertiary)",maxWidth:340,lineHeight:1.55,margin:"0 0 28px",padding:"0 12px"}}>Pour tous les cégeps du Québec. <strong style={{fontWeight:500,color:"var(--color-text-secondary)"}}>Drop</strong> = tu ne reprendrais pas ce prof. <strong style={{fontWeight:500,color:"var(--color-text-secondary)"}}>Keep</strong> = tu le recommandes.</p>
+        <button onClick={onStart} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px 34px",fontSize:15,fontWeight:600,cursor:"pointer",boxShadow:"0 4px 14px rgba(29,158,117,0.3)"}}>Voir les profs →</button>
+        {!user&&<button onClick={onLogin} style={{marginTop:10,background:"none",border:"none",fontSize:13,color:"var(--color-text-tertiary)",cursor:"pointer",textDecoration:"underline"}}>J'ai déjà un compte</button>}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10,maxWidth:440,width:"100%",marginTop:44,padding:"0 8px"}}>
           {[
-            {n:totalUsers?`${totalUsers} étudiants`:"Communauté",d:totalUsers?"Inscrits sur coteR":"Tous les cégeps du QC"},
-            {n:"Drop/Keep",d:"Verdict clair par prof"},
-            {n:totalReviews?`${totalReviews} avis`:"Cote R",d:totalReviews?"Soumis anonymement":"Formule avec écart-type"},
+            {n:totalUsers?`${totalUsers}`:"→",d:totalUsers?"étudiants inscrits":"Rejoins la communauté"},
+            {n:totalReviews?`${totalReviews}`:"Drop/Keep",d:totalReviews?"avis soumis anonymement":"Verdict clair par prof"},
+            {n:"73",d:"cégeps couverts au QC"},
           ].map((f,i)=>(
-            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px 12px"}}><p style={{fontSize:15,fontWeight:600,margin:"0 0 3px",color:"var(--color-text-primary)"}}>{f.n}</p><p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0,lineHeight:1.4}}>{f.d}</p></div>
+            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px 12px"}}><p style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)",fontFamily:"'Space Mono',monospace"}}>{f.n}</p><p style={{fontSize:11,color:"var(--color-text-secondary)",margin:0,lineHeight:1.4}}>{f.d}</p></div>
+          ))}
+        </div>
+      </div>
+      <div style={{maxWidth:560,margin:"0 auto",padding:"32px 8px 48px"}}>
+        <p style={{fontSize:13,fontWeight:600,color:"var(--color-text-tertiary)",textAlign:"center",margin:"0 0 20px",textTransform:"uppercase",letterSpacing:"0.06em"}}>Comment ça marche</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12}}>
+          {[
+            {step:"1",title:"Cherche ton cégep",desc:"Tape le nom de ton établissement ou d'un prof directement."},
+            {step:"2",title:"Lis les avis",desc:"Vois la note, le verdict drop/keep et les commentaires d'autres étudiants."},
+            {step:"3",title:"Partage ton expérience",desc:"Crée un compte gratuit et évalue tes profs anonymement."},
+          ].map((s,i)=>(
+            <div key={i} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px 14px"}}>
+              <div style={{width:26,height:26,borderRadius:"50%",background:"#1D9E75",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10}}>
+                <span style={{fontSize:12,fontWeight:700,color:"#fff",fontFamily:"'Space Mono',monospace"}}>{s.step}</span>
+              </div>
+              <p style={{fontSize:13,fontWeight:600,margin:"0 0 4px",color:"var(--color-text-primary)"}}>{s.title}</p>
+              <p style={{fontSize:12,color:"var(--color-text-secondary)",margin:0,lineHeight:1.5}}>{s.desc}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -518,9 +537,9 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
   const hasFilter=q.length>=1||cq.length>=1;
   return(
     <div style={{maxWidth:720,margin:"0 auto"}} className="page-enter">
-      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Rating des profs</h1>
-      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 14px"}}>Drop ou keep? Check avant de t'inscrire.</p>
-      <input type="text" placeholder="Chercher un prof, cours ou département..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:8}}/>
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Profs évalués</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 14px"}}>Cherche ton cégep ou un prof pour voir les avis d'autres étudiants.</p>
+      <input type="text" placeholder="Chercher un prof par nom, cours ou département..." value={search} onChange={e=>setSearch(e.target.value)} style={{...inp,marginBottom:8}}/>
       {q.length<1&&<div style={{marginBottom:12}}>
         <CegepPicker value={cegep} onChange={setCegep}/>
         {!cq&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:6}}>
@@ -533,9 +552,9 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
       </div>
       {list.length===0
         ?<div style={{textAlign:"center",padding:"40px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}>
-          <p style={{fontSize:15,fontWeight:600,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{hasFilter?"Aucun résultat":"Cherche ton cégep ou un prof"}</p>
-          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>{hasFilter?"Ce prof n'a pas encore été évalué.":"Tape le nom de ton établissement ci-dessus."}</p>
-          {hasFilter&&<button onClick={()=>onEvaluate({name:search.trim(),cegep:(!q&&CEGEPS.includes(cegep))?cegep:"",dept:""})} style={{marginTop:14,background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Être le premier à évaluer</button>}
+          <p style={{fontSize:15,fontWeight:600,color:"var(--color-text-primary)",margin:"0 0 6px"}}>{hasFilter?"Aucun résultat trouvé":"Par où commencer?"}</p>
+          <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,lineHeight:1.6}}>{hasFilter?"Ce prof n'a pas encore été évalué sur coteR.":"Tape le nom de ton cégep dans le champ ci-dessus (ex: «\u00a0Montmorency\u00a0») ou cherche directement un prof par son nom."}</p>
+          {hasFilter&&<button onClick={()=>onEvaluate({name:search.trim(),cegep:(!q&&CEGEPS.includes(cegep))?cegep:"",dept:""})} style={{marginTop:14,background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Être le premier à l'évaluer →</button>}
         </div>
         :<div style={{display:"flex",flexDirection:"column",gap:8}}>{list.map(p=>(
           <div key={p.id} onClick={()=>setSel(p)} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px 16px",cursor:"pointer",transition:"border-color 0.15s, box-shadow 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--color-border-secondary)";e.currentTarget.style.boxShadow="var(--shadow-sm)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--color-border-tertiary)";e.currentTarget.style.boxShadow="none"}}>
@@ -549,7 +568,7 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
               </div>
               {p.totalReviews>0&&<div style={{textAlign:"right",flexShrink:0}}>
                 <p style={{fontSize:24,fontWeight:700,margin:0,fontFamily:"'Space Mono',monospace",color:rc(p.rating),lineHeight:1}}>{p.rating}</p>
-                <p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:"2px 0 0"}}>{p.totalReviews} avis</p>
+                <p style={{fontSize:10,color:"var(--color-text-tertiary)",margin:"2px 0 0"}}>{p.totalReviews} avis · voir →</p>
               </div>}
             </div>
             {p.totalReviews>0&&<div style={{display:"flex",gap:14}}>
@@ -649,8 +668,12 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
 
   return(
     <div style={{maxWidth:620,margin:"0 auto"}} className="page-enter">
-      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Évaluer un prof</h1>
-      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>100% anonyme. Aide les autres à faire le bon choix.</p>
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Évalue ton prof</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 16px"}}>Ton avis est <strong style={{fontWeight:500}}>100% anonyme</strong> — aucune info personnelle n'est partagée.</p>
+      <div style={{background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:18,display:"flex",alignItems:"start",gap:8}}>
+        <span style={{fontSize:14,marginTop:1,flexShrink:0}}>ℹ</span>
+        <p style={{fontSize:12,color:"var(--color-text-info)",margin:0,lineHeight:1.55}}><strong style={{fontWeight:500}}>Drop ou Keep?</strong> C'est simple — est-ce que tu reprendrais ce prof si tu avais le choix? <strong style={{fontWeight:500}}>Keep</strong> = oui, tu le recommandes. <strong style={{fontWeight:500}}>Drop</strong> = tu éviterais de le reprendre.</p>
+      </div>
       {error&&<div style={{background:"var(--color-background-danger)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:14}}><p style={{fontSize:13,color:"var(--color-text-danger)",margin:0}}>{error}</p></div>}
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div><label style={lbl}>Cégep</label><CegepPicker value={cegep} onChange={setCegep}/></div>
@@ -678,23 +701,23 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div>
-            <label style={lbl}>Qualité du prof</label>
+            <label style={lbl}>Qualité du prof <span style={{fontWeight:400,color:"var(--color-text-tertiary)"}}>(pédagogie, clarté, disponibilité)</span></label>
             <div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=>{const sel=quality===String(n);return<button key={n} onClick={()=>setQuality(String(n))} style={{flex:1,padding:"9px 0",fontSize:14,fontWeight:sel?700:400,border:sel?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:sel?"var(--color-background-success)":"var(--color-background-primary)",color:sel?"#1D9E75":"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>})}
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Mauvais</span><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Excellent</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>1 = Très mauvais</span><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>5 = Excellent</span></div>
           </div>
           <div>
-            <label style={lbl}>Difficulté du cours</label>
+            <label style={lbl}>Difficulté du cours <span style={{fontWeight:400,color:"var(--color-text-tertiary)"}}>(charge de travail, examens)</span></label>
             <div style={{display:"flex",gap:4}}>{[1,2,3,4,5].map(n=>{const sel=diff===String(n);const dc=n<=2?"#1D9E75":n<=3?"#EF9F27":"#E24B4A";const dbg=n<=2?"var(--color-background-success)":n<=3?"var(--color-background-warning)":"var(--color-background-danger)";return<button key={n} onClick={()=>setDiff(String(n))} style={{flex:1,padding:"9px 0",fontSize:14,fontWeight:sel?700:400,border:sel?`2px solid ${dc}`:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",cursor:"pointer",background:sel?dbg:"var(--color-background-primary)",color:sel?dc:"var(--color-text-secondary)",fontFamily:"'Space Mono',monospace"}}>{n}</button>})}
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Facile</span><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>Difficile</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>1 = Très facile</span><span style={{fontSize:10,color:"var(--color-text-tertiary)"}}>5 = Très difficile</span></div>
           </div>
         </div>
-        <div><label style={lbl}>Drop ou keep?</label><div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setVerdict("keep")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="keep"?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-success)",color:"#1D9E75",cursor:"pointer"}}>KEEP</button>
-          <button onClick={()=>setVerdict("drop")} style={{flex:1,padding:"10px",fontSize:14,fontWeight:500,border:verdict==="drop"?"2px solid #E24B4A":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:"var(--color-background-danger)",color:"#E24B4A",cursor:"pointer"}}>DROP</button>
+        <div><label style={lbl}>Ton verdict — tu reprendrais ce prof?</label><div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setVerdict("keep")} style={{flex:1,padding:"11px",fontSize:14,fontWeight:600,border:verdict==="keep"?"2px solid #1D9E75":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:verdict==="keep"?"var(--color-background-success)":"var(--color-background-primary)",color:verdict==="keep"?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer"}}>✓ KEEP — je le recommande</button>
+          <button onClick={()=>setVerdict("drop")} style={{flex:1,padding:"11px",fontSize:14,fontWeight:600,border:verdict==="drop"?"2px solid #E24B4A":"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",background:verdict==="drop"?"var(--color-background-danger)":"var(--color-background-primary)",color:verdict==="drop"?"#E24B4A":"var(--color-text-secondary)",cursor:"pointer"}}>✕ DROP — je l'éviterais</button>
         </div></div>
-        <div><label style={lbl}>Ton avis</label><textarea placeholder="Décris ton expérience — points forts, points faibles, ce qui aide à réussir." rows={4} maxLength={1000} value={review} onChange={e=>setReview(e.target.value.slice(0,1000))} style={{...inp,resize:"vertical",fontFamily:"inherit",lineHeight:1.55}}/><p style={{fontSize:11,color:review.length>900?"#E24B4A":review.length>0?"var(--color-text-secondary)":"var(--color-text-tertiary)",textAlign:"right",margin:"4px 0 0"}}>{review.length}/1000</p></div>
+        <div><label style={lbl}>Ton avis <span style={{fontWeight:400,color:"var(--color-text-tertiary)"}}>(ce qui t'a le plus aidé ou dérangé)</span></label><textarea placeholder="Ex: Explique bien mais les examens sont difficiles. Présentation obligatoire en classe. Je recommande de lire le manuel avant les cours..." rows={4} maxLength={1000} value={review} onChange={e=>setReview(e.target.value.slice(0,1000))} style={{...inp,resize:"vertical",fontFamily:"inherit",lineHeight:1.55}}/><p style={{fontSize:11,color:review.length>900?"#E24B4A":review.length>0?"var(--color-text-secondary)":"var(--color-text-tertiary)",textAlign:"right",margin:"4px 0 0"}}>{review.length}/1000</p></div>
         <button onClick={handleSubmit} disabled={loading||submitCooldown} style={{width:"100%",background:(loading||submitCooldown)?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:(loading||submitCooldown)?"wait":"pointer",opacity:(loading||submitCooldown)?0.8:1}}>{loading?"Envoi...":"Soumettre anonymement"}</button>
       </div>
     </div>
@@ -709,7 +732,7 @@ function CalcPage(){
   return(
     <div style={{maxWidth:720,margin:"0 auto"}} className="page-enter">
       <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Calculateur de cote R</h1>
-      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 6px"}}>Entre ta note, la moyenne et l'écart-type du groupe.</p>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 6px"}}>La cote R est la note utilisée pour les admissions universitaires au Québec. Entre tes résultats pour l'estimer.</p>
       <div style={{background:"var(--color-background-info)",borderRadius:"var(--border-radius-md)",padding:"10px 14px",marginBottom:20,display:"flex",alignItems:"start",gap:8}}><span style={{fontSize:14,marginTop:1}}>&#9432;</span><p style={{fontSize:12,color:"var(--color-text-info)",margin:0,lineHeight:1.5}}>Trouve ces infos sur <strong style={{fontWeight:500}}>Omnivox → Résultats</strong> ou <strong style={{fontWeight:500}}>Léa → Mon dossier</strong>.</p></div>
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
         <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.5fr) repeat(3,minmax(0,1fr)) 28px",gap:6,padding:"0 2px"}}><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500}}>Cours</span><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500,textAlign:"center"}}>Note %</span><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500,textAlign:"center"}}>Moy.</span><span style={{fontSize:11,color:"var(--color-text-secondary)",fontWeight:500,textAlign:"center"}}>Éc.-type</span><span/></div>
