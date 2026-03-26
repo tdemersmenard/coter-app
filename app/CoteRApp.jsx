@@ -177,14 +177,28 @@ function WelcomePage({onDone}){
 }
 
 // ============ ACCOUNT PAGE ============
-function AccountPage({user,onLogout,onBack}){
+function AccountPage({user,onLogout,onBack,onUpdateCegep}){
+  const[cegepEdit,setCegepEdit]=useState(user.cegep||"");
+  const[saving,setSaving]=useState(false);
+  const[saved,setSaved]=useState(false);
+  const handleSaveCegep=async()=>{
+    setSaving(true);setSaved(false);
+    await onUpdateCegep(cegepEdit);
+    setSaving(false);setSaved(true);
+    setTimeout(()=>setSaved(false),2000);
+  };
   return(
     <div style={{maxWidth:520,margin:"0 auto",padding:"24px 0"}}>
       <button onClick={onBack} style={{background:"none",border:"none",fontSize:13,color:"var(--color-text-secondary)",cursor:"pointer",padding:"0 0 16px"}}>&larr; Retour</button>
-      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",border:"0.5px solid var(--color-border-tertiary)",padding:"28px 24px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24}}>
+      <div style={{background:"var(--color-background-primary)",borderRadius:"var(--border-radius-lg)",border:"0.5px solid var(--color-border-tertiary)",padding:"28px 24px",display:"flex",flexDirection:"column",gap:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
           <div style={{width:52,height:52,borderRadius:"50%",background:"var(--color-background-info)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"var(--color-text-info)",flexShrink:0}}>{(user.name||user.email||"U").charAt(0).toUpperCase()}</div>
           <div style={{minWidth:0}}><p style={{fontSize:18,fontWeight:500,margin:"0 0 2px",color:"var(--color-text-primary)",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name||"Utilisateur"}</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0,overflow:"hidden",textOverflow:"ellipsis"}}>{(e=>{const[l,d]=e.split("@");return l.slice(0,3)+"***@***."+(d?.split(".").pop()||"com")})(user.email||"")}</p></div>
+        </div>
+        <div style={{borderTop:"0.5px solid var(--color-border-tertiary)",paddingTop:20}}>
+          <label style={lbl}>Mon cégep</label>
+          <CegepPicker value={cegepEdit} onChange={setCegepEdit}/>
+          <button onClick={handleSaveCegep} disabled={saving} style={{marginTop:10,width:"100%",background:saved?"var(--color-background-success)":saving?"#0F6E56":"#1D9E75",color:saved?"#1D9E75":"#fff",border:saved?"1px solid #1D9E75":"none",borderRadius:"var(--border-radius-md)",padding:"10px",fontSize:13,fontWeight:500,cursor:"pointer"}}>{saving?"Enregistrement...":saved?"✓ Enregistré":"Enregistrer mon cégep"}</button>
         </div>
         <button onClick={onLogout} style={{width:"100%",background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-md)",padding:"11px",fontSize:14,cursor:"pointer",color:"var(--color-text-danger)"}}>Se déconnecter</button>
       </div>
@@ -247,6 +261,7 @@ function LoginPage({onClose,onVerified}){
   const[mode,setMode]=useState("login"); // "login" | "signup" | "verify"
   const[email,setEmail]=useState("");
   const[password,setPassword]=useState("");
+  const[signupCegep,setSignupCegep]=useState("");
   const[otp,setOtp]=useState(["","","","","",""]);
   const[error,setError]=useState("");
   const[loading,setLoading]=useState(false);
@@ -312,6 +327,9 @@ function LoginPage({onClose,onVerified}){
     setLoading(true);setError("");
     const{error:e}=await supabase.auth.verifyOtp({email,token,type:"signup"});
     if(e){setError("Code invalide ou expiré. Réessaie.");setLoading(false);return}
+    if(signupCegep&&CEGEPS.includes(signupCegep)){
+      await supabase.auth.updateUser({data:{cegep:signupCegep}});
+    }
     setLoading(false);
     onVerified();
   };
@@ -364,6 +382,7 @@ function LoginPage({onClose,onVerified}){
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <input type="email" placeholder="ton@email.com" autoComplete="off" value={email} onChange={e=>setEmail(e.target.value)} style={{...inp}}/>
           <input type="password" placeholder="Mot de passe (6+ caractères)" autoComplete="off" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleAuth()}} style={{...inp}}/>
+          {mode==="signup"&&<div><label style={{...lbl,marginTop:4}}>Ton cégep <span style={{fontWeight:400,color:"var(--color-text-tertiary)"}}>(optionnel)</span></label><CegepPicker value={signupCegep} onChange={setSignupCegep}/></div>}
           {sitekey&&<div style={{display:"flex",justifyContent:"center",margin:"4px 0"}}><HCaptcha ref={captchaRef} sitekey={sitekey} onVerify={t=>setCaptchaToken(t)} onExpire={resetCaptcha} theme="auto"/></div>}
           <button onClick={handleAuth} disabled={loading} style={{width:"100%",background:loading?"#0F6E56":"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"13px",fontSize:15,fontWeight:500,cursor:loading?"wait":"pointer",marginTop:2}}>{loading?"...":(mode==="signup"?"Créer mon compte":"Se connecter")}</button>
         </div>
@@ -589,7 +608,7 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
 
 // ============ SUBMIT PAGE (writes to Supabase) ============
 function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
-  const[cegep,setCegep]=useState(prefill?.cegep||"");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[customCourse,setCustomCourse]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[lastSubmitTime,setLastSubmitTime]=useState(0);const[submitCooldown,setSubmitCooldown]=useState(false);
+  const[cegep,setCegep]=useState(prefill?.cegep||user?.cegep||"");const[profName,setProfName]=useState(prefill?.name||"");const[dept,setDept]=useState(prefill?.dept||"");const[course,setCourse]=useState("");const[quality,setQuality]=useState("");const[diff,setDiff]=useState("");const[verdict,setVerdict]=useState("");const[review,setReview]=useState("");const[submitted,setSubmitted]=useState(false);const[showProfSug,setShowProfSug]=useState(false);const[showCourseSug,setShowCourseSug]=useState(false);const[customCourse,setCustomCourse]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);const[lastSubmitTime,setLastSubmitTime]=useState(0);const[submitCooldown,setSubmitCooldown]=useState(false);
 
   if(!user)return(<div style={{maxWidth:480,margin:"0 auto",textAlign:"center",padding:"60px 12px"}}><div style={{width:44,height:44,borderRadius:"50%",background:"var(--color-background-secondary)",display:"inline-flex",alignItems:"center",justifyContent:"center",marginBottom:14}}><span style={{fontSize:20,color:"var(--color-text-secondary)"}}>&#9998;</span></div><p style={{fontSize:16,fontWeight:500,color:"var(--color-text-primary)",margin:"0 0 8px"}}>Connecte-toi pour évaluer</p><p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 20px"}}>Tu dois avoir un compte pour soumettre une évaluation anonyme.</p><button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"10px 24px",fontSize:14,fontWeight:500,cursor:"pointer"}}>Se connecter &rarr;</button></div>);
   if(submitted)return(
@@ -761,7 +780,7 @@ function timeAgo(dateStr){
 }
 
 function ConfessionsPage({user,goToLogin}){
-  const[cegep,setCegep]=useState("Cégep de Granby");
+  const[cegep,setCegep]=useState(user?.cegep||"Cégep de Granby");
   const[content,setContent]=useState("");
   const[confessions,setConfessions]=useState([]);
   const[loadingFeed,setLoadingFeed]=useState(false);
@@ -769,6 +788,8 @@ function ConfessionsPage({user,goToLogin}){
   const[error,setError]=useState("");
   const[page,setPage]=useState(0);
   const[hasMore,setHasMore]=useState(false);
+  const[refreshKey,setRefreshKey]=useState(0);
+  useEffect(()=>{if(user?.cegep&&cegep==="Cégep de Granby")setCegep(user.cegep)},[user?.cegep]);
   const PAGE_SIZE=20;
 
   // localStorage key for liked confession ids
@@ -789,7 +810,7 @@ function ConfessionsPage({user,goToLogin}){
     setLoadingFeed(false);
   };
 
-  useEffect(()=>{setPage(0);setConfessions([]);fetchConfessions(cegep,0)},[cegep]);
+  useEffect(()=>{setPage(0);setConfessions([]);fetchConfessions(cegep,0)},[cegep,refreshKey]);
 
   const handlePost=async()=>{
     if(!user){goToLogin();return}
@@ -804,8 +825,7 @@ function ConfessionsPage({user,goToLogin}){
       setError(e.message?.includes("Limite")?e.message:e.message||"Erreur lors de la publication. Réessaie.");
     }else{
       setContent("");
-      setPage(0);
-      await fetchConfessions(cegep,0);
+      setRefreshKey(k=>k+1);
     }
     setPosting(false);
   };
@@ -910,11 +930,11 @@ export default function App(){
       // Let onAuthStateChange handle the session, welcome shown after SIGNED_IN
     }
     supabase.auth.getSession().then(({data:{session}})=>{
-      if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
+      if(session)setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id,cegep:session.user.user_metadata?.cegep||""});
     });
     const{data:{subscription}}=supabase.auth.onAuthStateChange((ev,session)=>{
       if(session){
-        setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id});
+        setUser({name:session.user.user_metadata?.full_name||session.user.email?.split("@")[0],email:session.user.email,id:session.user.id,cegep:session.user.user_metadata?.cegep||""});
         if(ev==="SIGNED_IN"&&(window.location.hash.includes("type=signup")||window.location.hash.includes("access_token"))){
           window.history.replaceState({},"",window.location.pathname);
           triggerWelcome();
@@ -978,6 +998,7 @@ export default function App(){
   };
   const goToEvaluate=prof=>{setSubmitPrefill({name:prof.name,cegep:prof.cegep,dept:prof.dept||""});if(user){go("submit")}else{afterLoginPage.current="submit";go("login")}};
   const navTo=t=>{setPrevPage(p=>p===t?p:page);setPage(t);syncHash(t);try{if(t!=="login")localStorage.setItem("coter_page",t)}catch{}};
+  const updateUserCegep=async(cegep)=>{await supabase.auth.updateUser({data:{cegep}});setUser(u=>u?{...u,cegep}:u)};
   const handleLogout=async()=>{await supabase.auth.signOut();setUser(null);navTo("profs")};
   const wrap=ch=><div style={{maxWidth:900,margin:"0 auto",padding:"0 20px",fontFamily:"var(--font-sans)"}}>{ch}</div>;
 
@@ -995,7 +1016,7 @@ export default function App(){
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
     {page==="login"&&<div className="page-enter"><LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/></div>}
     {showWelcome&&<WelcomePage onDone={()=>setShowWelcome(false)}/>}
-    {page==="account"&&<div className="page-enter"><AccountPage user={user} onLogout={handleLogout} onBack={()=>setPage(prevPage)}/></div>}
+    {page==="account"&&<div className="page-enter"><AccountPage user={user} onLogout={handleLogout} onBack={()=>setPage(prevPage)} onUpdateCegep={updateUserCegep}/></div>}
     <footer style={{marginTop:48,paddingTop:14,paddingBottom:24,borderTop:"0.5px solid var(--color-border-tertiary)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
       <Logo size="sm"/><p style={{fontSize:11,color:"var(--color-text-tertiary)",margin:0}}>Fait par des étudiants, pour les étudiants.</p>
     </footer>
