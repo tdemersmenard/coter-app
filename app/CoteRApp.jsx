@@ -595,7 +595,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
 
   const handleSubmit=async()=>{
     // Rate limit frontend: 60s entre soumissions
-    if(Date.now()-lastSubmitTime<60000&&lastSubmitTime>0){setError("Attends 1 minute avant de soumettre un autre avis.");return}
+    if(Date.now()-lastSubmitTime<15000&&lastSubmitTime>0){setError("Attends 15 secondes avant de soumettre un autre avis.");return}
     const cleanName=sanitize(profName);const cleanCourse=sanitize(course);const cleanReview=sanitize(review);const cleanDept=sanitize(dept);
     if(!cleanName||!cleanCourse||!quality||!diff||!verdict||!cleanReview){setError("Remplis tous les champs.");return}
     if(cleanName.length<3||cleanName.length>100){setError("Nom du prof: entre 3 et 100 caractères.");return}
