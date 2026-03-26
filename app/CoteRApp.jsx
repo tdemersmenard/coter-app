@@ -111,6 +111,7 @@ function MobileNav({page,setPage,user,goToLogin,goToAccount}){
   const items=[
     {id:"profs",icon:"⊞",l:"Profs"},
     {id:"calc",icon:"∑",l:"Cote R"},
+    {id:"confessions",icon:"♡",l:"Confessions"},
     {id:"submit",icon:"✏",l:"Évaluer"},
     {id:user?"account":"login",icon:user?"◎":"→",l:user?"Compte":"Connexion"},
   ];
@@ -137,7 +138,7 @@ function Nav({page,setPage,user,goToLogin,goToAccount,onlineCount}){
       <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0,flex:1}}>
         <span onClick={()=>setPage("landing")} style={{flexShrink:0,cursor:"pointer"}}><Logo size="sm"/></span>
         <div className="nav-links" style={{display:"flex",gap:2,minWidth:0}}>
-          {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"submit",l:"Évaluer"}].map(t=>(
+          {[{id:"profs",l:"Profs"},{id:"calc",l:"Cote R"},{id:"confessions",l:"Confessions"},{id:"submit",l:"Évaluer"}].map(t=>(
             <button key={t.id} onClick={()=>{if(t.id==="submit"&&!user){goToLogin();return}setPage(t.id)}} style={{background:page===t.id?"var(--color-background-secondary)":"transparent",border:"none",borderRadius:"var(--border-radius-md)",padding:"6px 10px",fontSize:13,cursor:"pointer",fontWeight:page===t.id?600:400,color:page===t.id?"var(--color-text-primary)":"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{t.l}</button>
           ))}
         </div>
@@ -749,8 +750,135 @@ function CalcPage(){
   );
 }
 
+// ============ CONFESSIONS PAGE ============
+function timeAgo(dateStr){
+  const s=Math.floor((Date.now()-new Date(dateStr))/1000);
+  if(s<60)return"à l'instant";
+  if(s<3600)return`il y a ${Math.floor(s/60)} min`;
+  if(s<86400)return`il y a ${Math.floor(s/3600)}h`;
+  if(s<604800)return`il y a ${Math.floor(s/86400)} jour${Math.floor(s/86400)>1?"s":""}`;
+  return`il y a ${Math.floor(s/604800)} semaine${Math.floor(s/604800)>1?"s":""}`;
+}
+
+function ConfessionsPage({user,goToLogin}){
+  const[cegep,setCegep]=useState("Cégep de Granby");
+  const[content,setContent]=useState("");
+  const[confessions,setConfessions]=useState([]);
+  const[loadingFeed,setLoadingFeed]=useState(false);
+  const[posting,setPosting]=useState(false);
+  const[error,setError]=useState("");
+  const[page,setPage]=useState(0);
+  const[hasMore,setHasMore]=useState(false);
+  const PAGE_SIZE=20;
+
+  // localStorage key for liked confession ids
+  const likedKey="coter_confession_likes";
+  const getLiked=()=>{try{return new Set(JSON.parse(localStorage.getItem(likedKey)||"[]"))}catch{return new Set()}};
+  const[liked,setLiked]=useState(getLiked);
+
+  const fetchConfessions=async(cg,pg,append=false)=>{
+    setLoadingFeed(true);
+    const{data}=await supabase.from('confessions').select('id,cegep,content,likes,created_at').eq('cegep',cg).order('created_at',{ascending:false}).range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
+    if(data){
+      setConfessions(prev=>append?[...prev,...data]:data);
+      setHasMore(data.length===PAGE_SIZE+1);
+      if(data.length===PAGE_SIZE+1)data.pop();
+    }
+    setLoadingFeed(false);
+  };
+
+  useEffect(()=>{setPage(0);setConfessions([]);fetchConfessions(cegep,0)},[cegep]);
+
+  const handlePost=async()=>{
+    if(!user){goToLogin();return}
+    const clean=sanitize(content);
+    if(!clean||clean.length<2){setError("Écris quelque chose avant de poster.");return}
+    if(clean.length>500){setError("Maximum 500 caractères.");return}
+    if(!CEGEPS.includes(cegep)){setError("Sélectionne un cégep valide.");return}
+    setPosting(true);setError("");
+    const{error:e}=await supabase.from('confessions').insert({cegep,content:clean,user_id:user.id});
+    if(e){
+      setError(e.message?.includes("Limite")?e.message:"Erreur lors de la publication. Réessaie.");
+    }else{
+      setContent("");
+      fetchConfessions(cegep,0);
+    }
+    setPosting(false);
+  };
+
+  const handleLike=async(confession)=>{
+    if(liked.has(confession.id))return;
+    const newLiked=new Set(liked);newLiked.add(confession.id);
+    setLiked(newLiked);
+    try{localStorage.setItem(likedKey,JSON.stringify([...newLiked]))}catch{}
+    setConfessions(prev=>prev.map(c=>c.id===confession.id?{...c,likes:c.likes+1}:c));
+    await supabase.from('confessions').update({likes:confession.likes+1}).eq('id',confession.id);
+  };
+
+  const loadMore=()=>{const next=page+1;setPage(next);fetchConfessions(cegep,next,true)};
+
+  return(
+    <div style={{maxWidth:620,margin:"0 auto"}} className="page-enter">
+      <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Confessions</h1>
+      <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:"0 0 18px"}}>Ce que les étudiants pensent vraiment — 100% anonyme.</p>
+
+      {/* Sélecteur de cégep */}
+      <div style={{marginBottom:16}}>
+        <label style={lbl}>Cégep</label>
+        <CegepPicker value={cegep} onChange={v=>{if(CEGEPS.includes(v))setCegep(v);else setCegep(v)}}/>
+      </div>
+
+      {/* Zone de post */}
+      <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)",padding:"16px",marginBottom:20,position:"relative"}}>
+        {!user&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.03)",backdropFilter:"blur(2px)",borderRadius:"var(--border-radius-lg)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:2,gap:10}}>
+          <p style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",margin:0}}>Connecte-toi pour poster</p>
+          <button onClick={goToLogin} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 20px",fontSize:13,fontWeight:500,cursor:"pointer"}}>Se connecter →</button>
+        </div>}
+        <textarea
+          disabled={!user}
+          placeholder="Écris ta confession anonymement..."
+          rows={3}
+          maxLength={500}
+          value={content}
+          onChange={e=>setContent(e.target.value.slice(0,500))}
+          style={{...inp,resize:"none",fontFamily:"inherit",lineHeight:1.55,background:"var(--color-background-primary)",opacity:user?1:0.4}}
+        />
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+          <span style={{fontSize:11,color:content.length>450?"#E24B4A":"var(--color-text-tertiary)"}}>{content.length}/500</span>
+          <button onClick={handlePost} disabled={posting||!user} style={{background:"#1D9E75",color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px 18px",fontSize:13,fontWeight:500,cursor:"pointer",opacity:posting?0.7:1}}>{posting?"Envoi...":"Poster anonymement"}</button>
+        </div>
+        {error&&<p style={{fontSize:12,color:"var(--color-text-danger)",margin:"8px 0 0"}}>{error}</p>}
+      </div>
+
+      {/* Feed */}
+      {loadingFeed&&confessions.length===0
+        ?<div style={{display:"flex",flexDirection:"column",gap:9}}>{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,borderRadius:"var(--border-radius-lg)",opacity:1-i*0.2}}/>)}</div>
+        :confessions.length===0
+          ?<div style={{textAlign:"center",padding:"40px 16px",background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-lg)"}}>
+            <p style={{fontSize:15,fontWeight:600,color:"var(--color-text-primary)",margin:"0 0 4px"}}>Aucune confession encore.</p>
+            <p style={{fontSize:13,color:"var(--color-text-secondary)",margin:0}}>Sois le premier à partager quelque chose!</p>
+          </div>
+          :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {confessions.map(c=>(
+              <div key={c.id} style={{border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"14px 16px"}}>
+                <p style={{fontSize:14,color:"var(--color-text-primary)",lineHeight:1.6,margin:"0 0 10px"}}>{c.content}</p>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:11,color:"var(--color-text-tertiary)"}}>{timeAgo(c.created_at)}</span>
+                  <button onClick={()=>handleLike(c)} style={{background:liked.has(c.id)?"var(--color-background-success)":"none",border:"0.5px solid "+(liked.has(c.id)?"#1D9E75":"var(--color-border-tertiary)"),borderRadius:"var(--border-radius-md)",padding:"4px 10px",fontSize:11,cursor:liked.has(c.id)?"default":"pointer",color:liked.has(c.id)?"#1D9E75":"var(--color-text-tertiary)",display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{fontSize:13}}>{liked.has(c.id)?"♥":"♡"}</span>{c.likes||0}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {hasMore&&<button onClick={loadMore} disabled={loadingFeed} style={{width:"100%",background:"none",border:"0.5px solid var(--color-border-tertiary)",borderRadius:"var(--border-radius-lg)",padding:"11px",fontSize:13,cursor:"pointer",color:"var(--color-text-secondary)",marginTop:4}}>{loadingFeed?"Chargement...":"Voir plus"}</button>}
+          </div>
+      }
+    </div>
+  );
+}
+
 // ============ MAIN APP ============
-const PAGE_HASH={landing:"",profs:"profs",classement:"classement",calc:"calc",submit:"evaluer",login:"connexion",account:"compte"};
+const PAGE_HASH={landing:"",profs:"profs",classement:"classement",calc:"calc",confessions:"confessions",submit:"evaluer",login:"connexion",account:"compte"};
 const HASH_PAGE=Object.fromEntries(Object.entries(PAGE_HASH).map(([k,v])=>[v,k]));
 function syncHash(t){try{const h=PAGE_HASH[t]??'';window.history.pushState({page:t},'',h?'#'+h:window.location.pathname+window.location.search)}catch{}}
 
@@ -854,6 +982,7 @@ export default function App(){
     {!loading&&page==="profs"&&<ProfsPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
     {page==="classement"&&<RankingPage profs={profs} reviewsByProf={reviewsByProf} onEvaluate={goToEvaluate} likesByReview={likesByReview} userLikes={userLikes} onLike={toggleLike}/>}
     {page==="calc"&&<CalcPage/>}
+    {page==="confessions"&&<ConfessionsPage user={user} goToLogin={goToLogin}/>}
     {page==="submit"&&<SubmitPage user={user} profs={profs} goToLogin={goToLogin} onSubmitted={loadData} prefill={submitPrefill}/>}
     {page==="login"&&<div className="page-enter"><LoginPage onClose={()=>setPage(prevPage)} onVerified={triggerWelcome}/></div>}
     {showWelcome&&<WelcomePage onDone={()=>setShowWelcome(false)}/>}
