@@ -799,7 +799,8 @@ function ConfessionsPage({user,goToLogin}){
     setPosting(true);setError("");
     const{error:e}=await supabase.from('confessions').insert({cegep,content:clean,user_id:user.id});
     if(e){
-      setError(e.message?.includes("Limite")?e.message:"Erreur lors de la publication. Réessaie.");
+      console.error("Confession insert error:",e);
+      setError(e.message?.includes("Limite")?e.message:e.message||"Erreur lors de la publication. Réessaie.");
     }else{
       setContent("");
       fetchConfessions(cegep,0);
