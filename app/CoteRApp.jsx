@@ -43,7 +43,9 @@ const ALLOWED_EMAIL_DOMAINS = new Set([
   "eastlink.ca","northwestel.net","sasktel.net","mts.net",
 ]);
 
+function isValidEmailFormat(email){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)}
 function isEmailAllowed(email){
+  if(!isValidEmailFormat(email))return false;
   const domain=(email.split("@")[1]||"").toLowerCase();
   if(!domain)return false;
   if(ALLOWED_EMAIL_DOMAINS.has(domain))return true;
@@ -245,6 +247,7 @@ function LoginPage({onClose,onVerified}){
   const handleAuth=async()=>{
     if(!email||!password){setError("Entre ton email et mot de passe.");return}
     if(password.length<6){setError("Mot de passe: 6 caractères minimum.");return}
+    if(mode==="signup"&&!isValidEmailFormat(email)){setError("Adresse email invalide.");return}
     if(mode==="signup"&&!isEmailAllowed(email)){setError("Domaine non accepté. Utilise Gmail, Outlook, Yahoo, ou ton email scolaire (.qc.ca).");return}
     if(sitekey&&!captchaToken){setError("Complète le captcha avant de continuer.");return}
     setLoading(true);setError("");
