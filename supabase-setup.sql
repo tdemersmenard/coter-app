@@ -11,9 +11,10 @@ create table if not exists profs (
   dept text default 'Autre',
   courses text[] default '{}',
   created_by uuid references auth.users(id) on delete set null,
-  created_at timestamp with time zone default now(),
-  unique(lower(name), cegep)
+  created_at timestamp with time zone default now()
 );
+-- Unique index on lower(name)+cegep (skip if already exists)
+create unique index if not exists profs_name_cegep_unique on profs (lower(name), cegep);
 
 create table if not exists reviews (
   id bigint generated always as identity primary key,
