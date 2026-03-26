@@ -780,16 +780,17 @@ function timeAgo(dateStr){
 }
 
 function ConfessionsPage({user,goToLogin}){
-  const[cegep,setCegep]=useState(user?.cegep||"Cégep de Granby");
+  const[cegep,setCegep]=useState(user?.cegep||"__all__");
   const[content,setContent]=useState("");
   const[confessions,setConfessions]=useState([]);
   const[loadingFeed,setLoadingFeed]=useState(false);
   const[posting,setPosting]=useState(false);
   const[error,setError]=useState("");
+  const[feedError,setFeedError]=useState("");
   const[page,setPage]=useState(0);
   const[hasMore,setHasMore]=useState(false);
   const[refreshKey,setRefreshKey]=useState(0);
-  useEffect(()=>{if(user?.cegep&&cegep==="Cégep de Granby")setCegep(user.cegep)},[user?.cegep]);
+  useEffect(()=>{if(user?.cegep&&cegep==="__all__")setCegep(user.cegep)},[user?.cegep]);
   const PAGE_SIZE=20;
 
   // localStorage key for liked confession ids
@@ -798,9 +799,10 @@ function ConfessionsPage({user,goToLogin}){
   const[liked,setLiked]=useState(getLiked);
 
   const fetchConfessions=async(cg,pg,append=false)=>{
-    setLoadingFeed(true);
-    const q=supabase.from('confessions').select('id,cegep,content,likes,created_at').order('created_at',{ascending:false}).range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
-    const{data}=await(cg==="__all__"?q:q.eq('cegep',cg));
+    setLoadingFeed(true);setFeedError("");
+    const base=supabase.from('confessions').select('id,cegep,content,likes,created_at').order('created_at',{ascending:false}).range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
+    const{data,error:fetchErr}=await(cg==="__all__"?base:base.eq('cegep',cg));
+    if(fetchErr){console.error("confessions fetch error:",fetchErr);setFeedError(fetchErr.message||"Erreur lors du chargement.");}
     if(data){
       const more=data.length===PAGE_SIZE+1;
       const rows=more?data.slice(0,-1):data;
@@ -850,7 +852,7 @@ function ConfessionsPage({user,goToLogin}){
       <div style={{marginBottom:16}}>
         <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
           <button onClick={()=>setCegep("__all__")} style={{fontSize:12,padding:"5px 12px",borderRadius:20,border:cegep==="__all__"?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep==="__all__"?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep==="__all__"?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",fontWeight:cegep==="__all__"?600:400}}>Tous les cégeps</button>
-          <button onClick={()=>setCegep("Cégep de Granby")} style={{fontSize:12,padding:"5px 12px",borderRadius:20,border:cegep!=="__all__"?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep!=="__all__"?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep!=="__all__"?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",fontWeight:cegep!=="__all__"?600:400}}>Mon cégep</button>
+          {user?.cegep&&<button onClick={()=>setCegep(user.cegep)} style={{fontSize:12,padding:"5px 12px",borderRadius:20,border:cegep===user.cegep?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep===user.cegep?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep===user.cegep?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",fontWeight:cegep===user.cegep?600:400}}>Mon cégep</button>}
         </div>
         {cegep!=="__all__"&&<CegepPicker value={cegep} onChange={v=>setCegep(v)}/>}
       </div>
@@ -879,6 +881,7 @@ function ConfessionsPage({user,goToLogin}){
       </div>
 
       {/* Feed */}
+      {feedError&&<p style={{fontSize:12,color:"var(--color-text-danger)",marginBottom:12}}>{feedError}</p>}
       {loadingFeed&&confessions.length===0
         ?<div style={{display:"flex",flexDirection:"column",gap:9}}>{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,borderRadius:"var(--border-radius-lg)",opacity:1-i*0.2}}/>)}</div>
         :confessions.length===0
