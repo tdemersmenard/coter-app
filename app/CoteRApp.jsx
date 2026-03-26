@@ -781,9 +781,10 @@ function ConfessionsPage({user,goToLogin}){
     const q=supabase.from('confessions').select('id,cegep,content,likes,created_at').order('created_at',{ascending:false}).range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
     const{data}=await(cg==="__all__"?q:q.eq('cegep',cg));
     if(data){
-      setConfessions(prev=>append?[...prev,...data]:data);
-      setHasMore(data.length===PAGE_SIZE+1);
-      if(data.length===PAGE_SIZE+1)data.pop();
+      const more=data.length===PAGE_SIZE+1;
+      const rows=more?data.slice(0,-1):data;
+      setHasMore(more);
+      setConfessions(prev=>append?[...prev,...rows]:rows);
     }
     setLoadingFeed(false);
   };
@@ -803,7 +804,8 @@ function ConfessionsPage({user,goToLogin}){
       setError(e.message?.includes("Limite")?e.message:e.message||"Erreur lors de la publication. Réessaie.");
     }else{
       setContent("");
-      fetchConfessions(cegep,0);
+      setPage(0);
+      await fetchConfessions(cegep,0);
     }
     setPosting(false);
   };
