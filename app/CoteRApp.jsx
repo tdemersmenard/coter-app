@@ -666,7 +666,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
         }
       }
       if(existing){profId=existing.id}else{
-        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep:exactCegep,dept:validDept,courses:[cleanCourse]}).select().single();
+        const{data,error:e}=await supabase.from('profs').insert({name:formatted,cegep:exactCegep,dept:validDept,courses:[cleanCourse],created_by:user.id}).select().single();
         if(e)throw e;profId=data.id;
       }
 
@@ -677,7 +677,7 @@ function SubmitPage({user,profs,goToLogin,onSubmitted,prefill}){
       const{error:re}=await supabase.from('reviews').insert({prof_id:profId,user_id:user.id,course:cleanCourse,rating:ratingNum,difficulty:diffNum,verdict,review_text:cleanReview});
       if(re)throw re;
       if(existing&&!existing.courses?.includes(cleanCourse)){
-        await supabase.from('profs').update({courses:[...(existing.courses||[]),cleanCourse]}).eq('id',profId);
+        await supabase.rpc('append_course_to_prof',{p_prof_id:profId,p_course:cleanCourse});
       }
       setLastSubmitTime(Date.now());
       setSubmitCooldown(true);setTimeout(()=>setSubmitCooldown(false),5000);
