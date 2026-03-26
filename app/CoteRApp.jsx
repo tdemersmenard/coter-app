@@ -839,7 +839,7 @@ function ConfessionsPage({user,goToLogin}){
     setLiked(newLiked);
     try{localStorage.setItem(likedKey,JSON.stringify([...newLiked]))}catch{}
     setConfessions(prev=>prev.map(c=>c.id===confession.id?{...c,likes:c.likes+1}:c));
-    await supabase.from('confessions').update({likes:confession.likes+1}).eq('id',confession.id);
+    await supabase.rpc('increment_confession_like',{p_id:confession.id});
   };
 
   const loadMore=()=>{const next=page+1;setPage(next);fetchConfessions(cegep,next,true)};
