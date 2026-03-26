@@ -803,7 +803,6 @@ function ConfessionsPage({user,goToLogin}){
     let q=supabase.from('confessions').select('id,cegep,content,likes,created_at').order('created_at',{ascending:false});
     if(cg!=="__all__")q=q.eq('cegep',cg);
     const{data,error:fetchErr}=await q.range(pg*PAGE_SIZE,(pg+1)*PAGE_SIZE);
-    console.log("confessions fetch:",{cg,pg,dataLen:data?.length,error:fetchErr});
     if(fetchErr){console.error("confessions fetch error:",fetchErr);setFeedError(fetchErr.message||"Erreur lors du chargement.");}
     if(data){
       const more=data.length===PAGE_SIZE+1;

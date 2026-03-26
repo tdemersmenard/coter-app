@@ -14,18 +14,26 @@ alter table confessions enable row level security;
 -- Tout le monde peut lire
 create policy "confessions_select"
   on confessions for select
+  to anon, authenticated
   using (true);
 
 -- Seulement les users connectés peuvent insérer
 create policy "confessions_insert"
   on confessions for insert
+  to authenticated
   with check (auth.uid() = user_id);
 
--- Les users peuvent mettre à jour les likes (UPDATE sur likes seulement, sans restriction d'auteur)
+-- Les users peuvent mettre à jour les likes
 create policy "confessions_update_likes"
   on confessions for update
+  to anon, authenticated
   using (true)
   with check (true);
+
+-- Grants
+grant select, update on table confessions to anon;
+grant select, insert, update on table confessions to authenticated;
+grant usage on sequence confessions_id_seq to authenticated;
 
 -- ============ RATE LIMIT : max 3 confessions par heure par user ============
 create or replace function check_confession_rate_limit()
