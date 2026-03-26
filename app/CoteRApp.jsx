@@ -251,7 +251,12 @@ function LoginPage({onClose,onVerified}){
     if(mode==="signup"){
       const opts=sitekey&&captchaToken?{options:{captchaToken}}:{};
       const{data:signUpData,error:e}=await supabase.auth.signUp({email,password,...opts});
-      if(e){setError(e.message);setLoading(false);resetCaptcha();return}
+      if(e){
+        if(e.message?.toLowerCase().includes('rate limit')||e.status===429)
+          setError("Trop de tentatives d'inscription en peu de temps. Réessaie dans quelques minutes.");
+        else setError(e.message);
+        setLoading(false);resetCaptcha();return
+      }
       const u=signUpData?.user;
       const emailExists=(u?.identities?.length===0)||(u?.email_confirmed_at!=null);
       if(emailExists){setError("Un compte existe déjà avec cet email. Connecte-toi.");setLoading(false);resetCaptcha();return}
