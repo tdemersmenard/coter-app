@@ -551,10 +551,10 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
   const cq=norm(cegep.trim());
   const profsWithStats=profs.map(p=>{const revs=reviewsByProf[p.id]||[];const rating=revs.length?Math.round(revs.reduce((s,r)=>s+r.rating,0)/revs.length*10)/10:0;const diff=revs.length?Math.round(revs.reduce((s,r)=>s+r.difficulty,0)/revs.length*10)/10:0;const keepPct=revs.length?Math.round(100*revs.filter(r=>r.verdict==="keep").length/revs.length):0;return{...p,rating,difficulty:diff,totalReviews:revs.length,verdict:keepPct>=50?"keep":"drop",tags:[]}});
   const profsWithReviews=profsWithStats.filter(p=>p.totalReviews>0);
-  let list=q.length>=1?profsWithReviews.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):cq.length>=1?profsWithReviews.filter(p=>norm(p.cegep).includes(cq)):[];
+  let list=q.length>=1?profsWithReviews.filter(p=>norm(p.name).includes(q)||p.courses?.some(c=>norm(c).includes(q))||norm(p.dept||"").includes(q)):cegep==="__all__"?profsWithReviews:cq.length>=1?profsWithReviews.filter(p=>norm(p.cegep).includes(cq)):[];
   list.sort((a,b)=>sort==="rating"?b.rating-a.rating:a.difficulty-b.difficulty);
-  const showCegepCol=q.length>=1||(cq.length>=1&&CEGEPS.filter(c=>norm(c).includes(cq)).length>1);
-  const hasFilter=q.length>=1||cq.length>=1;
+  const showCegepCol=q.length>=1||cegep==="__all__"||(cq.length>=1&&CEGEPS.filter(c=>norm(c).includes(cq)).length>1);
+  const hasFilter=q.length>=1||cq.length>=1||cegep==="__all__";
   return(
     <div style={{maxWidth:720,margin:"0 auto"}} className="page-enter">
       <h1 style={{fontSize:22,fontWeight:700,margin:"0 0 3px",color:"var(--color-text-primary)"}}>Profs évalués</h1>
@@ -563,7 +563,8 @@ function ProfsPage({profs,reviewsByProf,onEvaluate,likesByReview,userLikes,onLik
       {q.length<1&&<div style={{marginBottom:12}}>
         <CegepPicker value={cegep} onChange={setCegep}/>
         {!cq&&<div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:6}}>
-          {POPULAR_CEGEPS.map(c=><button key={c} onClick={()=>setCegep(c)} style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:"0.5px solid var(--color-border-secondary)",background:"var(--color-background-secondary)",color:"var(--color-text-secondary)",cursor:"pointer",whiteSpace:"nowrap"}}>{c.replace("Cégep de ","").replace("Cégep ","").replace("Collège ","")}</button>)}
+          <button onClick={()=>setCegep("__all__")} style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:cegep==="__all__"?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep==="__all__"?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep==="__all__"?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",whiteSpace:"nowrap",fontWeight:cegep==="__all__"?600:400}}>Tous les cégeps</button>
+          {POPULAR_CEGEPS.map(c=><button key={c} onClick={()=>setCegep(c)} style={{fontSize:11,padding:"4px 10px",borderRadius:20,border:cegep===c?"1.5px solid #1D9E75":"0.5px solid var(--color-border-secondary)",background:cegep===c?"var(--color-background-success)":"var(--color-background-secondary)",color:cegep===c?"#1D9E75":"var(--color-text-secondary)",cursor:"pointer",whiteSpace:"nowrap",fontWeight:cegep===c?600:400}}>{c.replace("Cégep de ","").replace("Cégep ","").replace("Collège ","")}</button>)}
         </div>}
       </div>}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
